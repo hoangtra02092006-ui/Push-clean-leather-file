@@ -1,0 +1,40 @@
+# Java / Maven
+target/
+*.class
+*.jar
+!**/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
+
+# Node / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Môi trường
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Thư mục lưu file tạm của backend
+backend/storage/
+storage/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+*.swp
+
+# Hệ điều hành
+.DS_Store
+Thumbs.db
+
+# Log
+*.log
+logs/
