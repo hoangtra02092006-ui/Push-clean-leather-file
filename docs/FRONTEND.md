@@ -156,7 +156,7 @@ Lỗi đồng bộ lúc tạo job (như `ITEM_WIDER_THAN_SHEET`) được store 
 
 Netlify chỉ host được frontend tĩnh. Nếu không có chế độ này, bản demo bấm vào đâu cũng báo lỗi mạng — không xem được gì.
 
-Bật bằng `VITE_USE_MOCK=true` (mặc định trong `netlify.toml`). Khi bật:
+Bật bằng `VITE_USE_MOCK=true`, hoặc tự bật khi chưa khai `VITE_API_BASE_URL`. Khi bật:
 
 - `src/api/mock.ts` thay thế toàn bộ tầng API.
 - Kích thước file được đọc **ngay trên trình duyệt**: ảnh lấy pixel thật ÷ 96 DPI; PDF thì dò chuỗi `/MediaBox [...]` trong 64 KB đầu file.

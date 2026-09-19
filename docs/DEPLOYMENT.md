@@ -32,7 +32,6 @@ Nếu chỉ deploy frontend lên Netlify mà chưa có backend, app vẫn xem v�
 
 [build.environment]
   NODE_VERSION = "20"
-  VITE_USE_MOCK = "true"
 
 [[redirects]]
   from = "/*"
@@ -139,7 +138,7 @@ Cách làm tương tự — cả hai đều đọc được `backend/Dockerfile`
 3. Deploy frontend lên Netlify          → lấy được URL Netlify
 4. Đặt APP_CORS_ORIGINS ở Render        = URL Netlify
 5. Đặt VITE_API_BASE_URL ở Netlify      = URL backend
-6. Đặt VITE_USE_MOCK=false ở Netlify
+6. Đặt VITE_USE_MOCK=false ở Netlify     (không bắt buộc: để trống cũng tự hiểu)
 7. Trigger deploy lại frontend          ← BƯỚC HAY BỊ QUÊN NHẤT
 ```
 
@@ -156,7 +155,8 @@ Cách làm tương tự — cả hai đều đọc được `backend/Dockerfile`
 |---|---|---|
 | "Không kết nối được tới máy chủ" | `VITE_API_BASE_URL` sai, hoặc backend đang ngủ | Kiểm tra URL không có `/` ở cuối; mở thẳng URL backend xem có sống không |
 | Lỗi CORS trong Console trình duyệt | `APP_CORS_ORIGINS` chưa có domain Netlify | Thêm chính xác cả `https://`, rồi khởi động lại backend |
-| Đổi biến ở Netlify mà không thấy gì đổi | Chưa build lại | **Clear cache and deploy site** |
+| Đổi biến ở Netlify mà không thấy gì đổi | Chưa build lại | **Trigger deploy → Deploy project without cache** |
+| Đặt biến trong Netlify UI mà vẫn vô hiệu | Biến cùng tên được khai trong `[build.environment]` của `netlify.toml` — file này có quyền **CAO HƠN** UI | Xoá biến đó khỏi `netlify.toml` |
 | 404 khi vào thẳng `/nest/upload` | Thiếu `[[redirects]]` | Kiểm tra `netlify.toml` đã được commit chưa |
 | `FILE_NOT_FOUND` giữa chừng | Container đã khởi động lại, file tạm mất | Gắn disk vào `/app/storage` |
 | `JOB_NOT_FOUND` sau khi chờ lâu | Job lưu trong RAM, máy chủ đã khởi động lại | Làm lại từ bước 1; muốn bền thì thay `JobStore` bằng bản dùng DB |

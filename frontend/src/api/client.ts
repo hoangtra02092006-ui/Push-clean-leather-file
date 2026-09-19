@@ -9,11 +9,26 @@
 import axios, { AxiosError } from 'axios'
 import type { ApiErrorBody } from '@/types'
 
-/** Bat che do demo: chay thuat toan rut gon ngay tren trinh duyet, khong can backend. */
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+/** URL goc cua backend. Bo dau "/" thua o cuoi de ghep duong dan khong bi "//". */
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '')
 
-/** URL goc cua backend. */
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+/**
+ * Co bat che do demo (chay thuat toan rut gon ngay tren trinh duyet) hay khong.
+ *
+ * Quy tac, theo thu tu uu tien:
+ *  1. `VITE_USE_MOCK` dat ro rang la "true" hoac "false" thi theo dung gia tri do.
+ *  2. Khong dat gi: TU SUY RA tu viec co URL backend hay khong.
+ *
+ * Buoc 2 la co y. Mot ban deploy moi tinh chua khai bao gi se tu chay che do demo
+ * (xem duoc ngay thay vi bao loi mang), con khi da chi ro backend thi mac nhien dung
+ * backend that - khong con canh dat URL backend roi van thac mac sao app khong goi toi.
+ */
+export const USE_MOCK = (() => {
+  const flag = (import.meta.env.VITE_USE_MOCK ?? '').trim().toLowerCase()
+  if (flag === 'true') return true
+  if (flag === 'false') return false
+  return API_BASE_URL === ''
+})()
 
 /** Loi da chuan hoa, dung chung toan app. */
 export class ApiError extends Error {

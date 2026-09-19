@@ -167,7 +167,7 @@ npm run build
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `VITE_API_BASE_URL` | `http://localhost:8080` | URL gốc của backend, bỏ dấu `/` cuối |
-| `VITE_USE_MOCK` | `true` | `true` = **chế độ demo**: chạy thuật toán rút gọn ngay trên trình duyệt, không cần backend. `false` = gọi API thật |
+| `VITE_USE_MOCK` | _tự suy ra_ | `true` = **chế độ demo** (chạy thuật toán rút gọn ngay trên trình duyệt). `false` = gọi API thật. **Để trống thì tự suy ra**: chưa khai `VITE_API_BASE_URL` thì bật demo, khai rồi thì dùng backend thật |
 
 > **Chế độ demo** có để bản Netlify xem và thao tác được đầy đủ giao diện khi chưa có backend. Khi bật, header hiện badge "Chế độ demo". Chế độ này **không xuất được PDF thật** và cho tỷ lệ lấp đầy thấp hơn bản thật vài phần trăm — xem [docs/FRONTEND.md](docs/FRONTEND.md#7-chế-độ-demo-mock).
 

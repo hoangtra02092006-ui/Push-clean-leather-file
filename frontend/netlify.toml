@@ -6,11 +6,14 @@
   command = "npm run build"
   publish = "dist"
 
-# Mặc định bật chế độ demo để bản Netlify hoạt động đầy đủ UI khi chưa có backend.
-# Muốn dùng backend thật: đổi VITE_USE_MOCK=false và set VITE_API_BASE_URL trong Netlify UI.
+# CHU Y: biến khai trong [build.environment] của netlify.toml có quyền CAO HƠN biến đặt
+# trong Netlify UI. Vì vậy ở đây KHÔNG khai VITE_USE_MOCK — khai vào là người dùng đặt
+# biến trong UI bao nhiêu lần cũng vô hiệu, mà nhìn UI lại tưởng đã đặt xong.
+#
+# Chế độ demo giờ do src/api/client.ts tự suy ra: chưa khai VITE_API_BASE_URL thì tự bật
+# demo, khai rồi thì dùng backend thật. Muốn ép bằng tay thì đặt VITE_USE_MOCK trong UI.
 [build.environment]
   NODE_VERSION = "20"
-  VITE_USE_MOCK = "true"
 
 # SPA fallback: mọi route trả về index.html để Vue Router xử lý.
 [[redirects]]
