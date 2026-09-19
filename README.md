@@ -90,42 +90,66 @@ printnest/
 
 ## 4. Yêu cầu môi trường
 
-| Thành phần | Phiên bản |
-|---|---|
-| JDK | **17 trở lên** (Dockerfile dùng 21) |
-| Maven | 3.9+ |
-| Node.js | 20+ |
+| Thành phần | Phiên bản | Ghi chú |
+|---|---|---|
+| JDK | **17 trở lên** (Dockerfile dùng 21) | Bắt buộc cài |
+| Maven | — | **Không cần cài.** Repo có sẵn Maven Wrapper (`mvnw`) |
+| Node.js | 20+ | Bắt buộc cài |
+
+Kiểm tra nhanh:
+
+```bash
+java -version    # phải ra 17 trở lên
+node -v          # phải ra v20 trở lên
+```
 
 ---
 
 ## 5. Chạy ở máy local
 
-### Backend
+Cần **hai cửa sổ terminal** chạy song song: một cho backend, một cho frontend.
+
+### Terminal 1 — Backend
 
 ```bash
 cd backend
-mvn spring-boot:run
+./mvnw spring-boot:run       # Windows (PowerShell / CMD): .\mvnw.cmd spring-boot:run
 ```
 
-Chạy ở `http://localhost:8080`. Thư mục lưu file tạm mặc định là `backend/storage/`.
+Chờ tới khi thấy dòng `Started PrintNestApplication`. Backend chạy ở `http://localhost:8080`.
+
+> Dùng `mvnw` (Maven Wrapper) chứ không phải `mvn`: wrapper tự tải đúng phiên bản Maven về, nên không cần cài Maven và ai clone repo cũng build ra kết quả giống hệt nhau.
+
+Thư mục lưu file tạm mặc định là `backend/storage/` (đã nằm trong `.gitignore`).
 
 Chạy toàn bộ test (15 test: 10 cho thuật toán, 5 cho API):
 
 ```bash
 cd backend
-mvn clean verify
+./mvnw clean verify          # Windows: .\mvnw.cmd clean verify
 ```
 
-### Frontend
+### Terminal 2 — Frontend
 
 ```bash
 cd frontend
-cp .env.example .env     # rồi sửa lại nếu cần
-npm install
+cp .env.example .env      # Windows PowerShell: copy .env.example .env
+npm install               # chỉ cần chạy lần đầu
 npm run dev
 ```
 
-Mở `http://localhost:5173`.
+Rồi mở **http://localhost:5173**.
+
+Mặc định `.env.example` có `VITE_USE_MOCK=true` (chế độ demo, không cần backend). Muốn dùng backend thật đang chạy ở Terminal 1, sửa `frontend/.env` thành:
+
+```
+VITE_API_BASE_URL=http://localhost:8080
+VITE_USE_MOCK=false
+```
+
+> Đổi `.env` xong phải **khởi động lại `npm run dev`** — Vite chỉ đọc biến môi trường lúc khởi động.
+
+Badge "Chế độ demo" trên header còn hiện tức là đang chạy mock; biến mất tức là đã nối được backend thật.
 
 Kiểm tra kiểu và build production:
 
