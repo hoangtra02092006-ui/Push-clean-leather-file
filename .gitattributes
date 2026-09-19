@@ -1,0 +1,21 @@
+# Mac dinh: chuan hoa ve LF trong kho, con trong thu muc lam viec thi tuy he dieu hanh.
+* text=auto
+
+# File nhi phan: TUYET DOI khong dung toi.
+# Cac file PDF mau duoc dung bang tay nen noi dung gan nhu toan ASCII; neu khong danh dau
+# o day, Git tuong la file van ban va doi LF thanh CRLF luc checkout - file phinh them vai
+# chuc byte va bang xref tro sai vi tri, mo ra la hong.
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.zip   binary
+*.jar   binary
+*.ico   binary
+
+# Script shell phai giu LF de chay duoc tren Linux va trong Docker.
+mvnw       text eol=lf
+*.sh       text eol=lf
+# Script batch cua Windows thi nguoc lai.
+mvnw.cmd   text eol=crlf
+*.bat      text eol=crlf
