@@ -1,0 +1,31 @@
+server:
+  port: ${PORT:8080}
+  compression:
+    enabled: true
+    mime-types: application/json,application/pdf
+
+spring:
+  application:
+    name: printnest
+  servlet:
+    multipart:
+      # Gioi han dung luong upload. Doi ca hai gia tri neu xuong can file lon hon.
+      max-file-size: 50MB
+      max-request-size: 200MB
+  mvc:
+    problemdetails:
+      enabled: false
+
+app:
+  storage:
+    # Thu muc luu file tam. Tren Render/Railway nen tro vao volume de khong mat khi
+    # container khoi dong lai; khong co volume thi file chi ton tai trong mot phien.
+    path: ${APP_STORAGE_PATH:./storage}
+    max-file-size: ${APP_MAX_FILE_SIZE:52428800}
+  cors:
+    # Origin cua frontend. Tren Netlify nho them dung ten mien da cap.
+    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+logging:
+  level:
+    vn.printnest: INFO
