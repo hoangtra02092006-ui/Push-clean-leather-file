@@ -1,0 +1,82 @@
+/* Reset toi gian + kieu chu co ban. Chi cac quy tac that su can thiet. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--f-sans);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure {
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--fs-2xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: var(--fs-xl);
+  font-weight: 620;
+}
+
+h3 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+a {
+  color: var(--c-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/*
+ * Moi con so trong app (kich thuoc, so luong, ty le) deu dung chu so co dinh be ngang.
+ * Khong co no, cac cot so trong bang se nhay qua nhay lai khi gia tri doi.
+ */
+table,
+input[type='number'],
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Vong focus phai nhin thay duoc - yeu cau toi thieu ve kha nang tiep can. */
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--c-accent-soft);
+}

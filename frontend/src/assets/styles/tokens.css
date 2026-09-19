@@ -1,0 +1,84 @@
+/*
+ * PrintNest - design token.
+ *
+ * Moi component CHI duoc dung bien o day. Khong hard-code ma mau hay so pixel trong
+ * component: doi mot token la ca giao dien doi theo, con hard-code thi sua sot la chuyen
+ * som muon. Xem docs/DESIGN-SYSTEM.md de biet nguyen tac su dung tung nhom token.
+ */
+
+:root {
+  /* --- Mau nen & vien --- */
+  --c-bg: #f7f8fa;
+  --c-surface: #ffffff;
+  --c-border: #e3e6ea;
+  --c-border-strong: #c9ced6;
+
+  /* --- Chu --- */
+  --c-text: #1a1d21;
+  --c-text-soft: #5b6472;
+  --c-text-mute: #8b94a3;
+
+  /* --- Mau nhan (duy nhat mot mau nhan cho ca app) --- */
+  --c-accent: #2563eb;
+  --c-accent-hover: #1d4ed8;
+  --c-accent-soft: #eff4ff;
+
+  /* --- Mau ngu nghia --- */
+  --c-success: #0f9d58;
+  --c-success-soft: #e8f5ee;
+  --c-warn: #d97706;
+  --c-warn-soft: #fdf3e3;
+  --c-danger: #dc2626;
+  --c-danger-soft: #fdecec;
+
+  /*
+   * Bang mau phan loai hinh trong preview. CO DINH theo thu tu, khong random:
+   * mot loai hinh phai giu nguyen mot mau qua moi lan ghep, neu khong tho se doc nham
+   * ban ve. categoryIndex tu backend anh xa thang vao day theo chi so.
+   */
+  --c-cat-1: #7c3aed;
+  --c-cat-2: #ea580c;
+  --c-cat-3: #0891b2;
+  --c-cat-4: #ca8a04;
+  --c-cat-5: #db2777;
+  --c-cat-6: #16a34a;
+  --c-cat-7: #4f46e5;
+  --c-cat-8: #b91c1c;
+
+  /* --- Khoang cach: thang 4px --- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  /* --- Bo goc --- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* --- Do bong: chi hai muc, rat nhe. Phan cap chinh la vien va nen. --- */
+  --sh-1: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --sh-2: 0 4px 12px rgba(16, 24, 40, 0.08);
+
+  /* --- Chu --- */
+  --f-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+  --fs-3xl: 32px;
+
+  /* --- Thoi gian chuyen canh --- */
+  --t-fast: 120ms;
+  --t-base: 200ms;
+
+  /* --- Kich thuoc dung chung --- */
+  --control-height: 38px;
+  --layout-max: 1180px;
+}

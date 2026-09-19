@@ -1,0 +1,19 @@
+# Cấu hình build & deploy frontend PrintNest trên Netlify.
+# Netlify chỉ host phần frontend tĩnh (không chạy được backend Java).
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+# Mặc định bật chế độ demo để bản Netlify hoạt động đầy đủ UI khi chưa có backend.
+# Muốn dùng backend thật: đổi VITE_USE_MOCK=false và set VITE_API_BASE_URL trong Netlify UI.
+[build.environment]
+  NODE_VERSION = "20"
+  VITE_USE_MOCK = "true"
+
+# SPA fallback: mọi route trả về index.html để Vue Router xử lý.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
