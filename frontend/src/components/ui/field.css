@@ -1,0 +1,86 @@
+/*
+ * Kieu dung chung cho AppInput va AppNumberInput.
+ *
+ * Tach ra file rieng vi hai component co hinh thuc y het nhau, chi khac kieu du lieu.
+ * Neu chep doi sang hai noi, som muon hai o nhap se lech nhau vai pixel.
+ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.field__label {
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  color: var(--c-text);
+}
+
+.field__box {
+  display: flex;
+  align-items: center;
+  height: var(--control-height);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  padding: 0 var(--s-3);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.field__box:focus-within {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
+}
+
+.field__box--error {
+  border-color: var(--c-danger);
+}
+
+.field__box--error:focus-within {
+  box-shadow: 0 0 0 3px var(--c-danger-soft);
+}
+
+.field__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--c-text);
+  font-size: var(--fs-base);
+  font-variant-numeric: tabular-nums;
+}
+
+.field__input:disabled {
+  color: var(--c-text-mute);
+}
+
+/* Bo nut tang/giam mac dinh cua trinh duyet cho gon. */
+.field__input[type='number']::-webkit-outer-spin-button,
+.field__input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.field__input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.field__suffix {
+  flex-shrink: 0;
+  padding-left: var(--s-2);
+  color: var(--c-text-mute);
+  font-size: var(--fs-sm);
+}
+
+.field__hint {
+  font-size: var(--fs-xs);
+  color: var(--c-text-mute);
+}
+
+.field__error {
+  font-size: var(--fs-xs);
+  color: var(--c-danger);
+}
