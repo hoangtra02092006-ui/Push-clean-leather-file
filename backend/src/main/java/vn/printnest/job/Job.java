@@ -1,5 +1,6 @@
 package vn.printnest.job;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import vn.printnest.common.ApiErrorResponse;
 import vn.printnest.nesting.model.NestRequest;
@@ -16,7 +17,9 @@ import java.time.Instant;
  * @param jobId    ma job
  * @param status   trang thai hien tai
  * @param progress tien do 0..100
- * @param request  tham so dau vao (giu lai de chay lai va de xuat PDF)
+ * @param request  tham so dau vao, giu lai de xuat PDF. KHONG tra ve cho client:
+ *                 frontend da co san tham so nay, ma job bi hoi lai moi 700 ms nen
+ *                 lap lai ca khoi tham so moi lan la phi bang thong vo ich
  * @param result   ket qua khi da xong
  * @param error    thong tin loi khi that bai
  * @param createdAt thoi diem tao
@@ -27,7 +30,7 @@ public record Job(
         String jobId,
         JobStatus status,
         int progress,
-        NestRequest request,
+        @JsonIgnore NestRequest request,
         NestResult result,
         ApiErrorResponse.ErrorBody error,
         Instant createdAt,
