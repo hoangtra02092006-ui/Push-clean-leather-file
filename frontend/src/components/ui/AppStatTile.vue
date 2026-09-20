@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** O so lieu: nhan nho o tren, con so to o duoi, don vi nho hon con so. */
+/** Ô số liệu: nhãn nhỏ ở trên, con số to ở dưới, đơn vị nhỏ hơn con số. */
 defineProps<{ label: string; value: string; unit?: string; tone?: 'default' | 'accent' | 'success' }>()
 </script>
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * Nut bam dung chung.
+ * Nút bấm dùng chung.
  *
- * QUY UOC: moi man hinh chi duoc co DUY NHAT mot nut `primary`. Nhieu nut dam cung luc
- * lam nguoi dung khong biet hanh dong chinh la gi.
+ * QUY ƯỚC: mỗi màn hình chỉ được có DUY NHẤT một nút `primary`. Nhiều nút đậm cùng lúc
+ * làm người dùng không biết hành động chính là gì.
  */
 import AppSpinner from './AppSpinner.vue'
 

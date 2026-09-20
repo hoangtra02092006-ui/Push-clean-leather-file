@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Khoi noi dung co vien. Phan cap bang vien va nen, khong dung do bong nang. */
+/** Khối nội dung có viền. Phân cấp bằng viền và nền, không dùng đổ bóng nặng. */
 defineProps<{ title?: string; subtitle?: string }>()
 </script>
 

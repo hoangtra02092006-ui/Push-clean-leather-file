@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Nhan nho hien trang thai. */
+/** Nhãn nhỏ hiện trạng thái. */
 withDefaults(defineProps<{ tone?: 'neutral' | 'accent' | 'success' | 'warn' | 'danger' }>(), {
   tone: 'neutral',
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Tieu de trang: ten + phu de mot dong, cho phep gan hanh dong ben phai. */
+/** Tiêu đề trang: tên + phụ đề một dòng, cho phép gắn hành động bên phải. */
 defineProps<{ title: string; subtitle?: string }>()
 </script>
 

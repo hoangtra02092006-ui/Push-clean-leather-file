@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * Hang o so lieu tong hop cua mot lan ghep.
+ * Hàng ô số liệu tổng hợp của một lần ghép.
  *
- * Bon con so duoc chon dung cai tho va chu xuong can biet: in ra may file, ton bao nhieu
- * met, lap day duoc bao nhieu, va tiet kiem duoc bao nhieu so voi cach in roi cu.
+ * Bốn con số được chọn đúng cái thợ và chủ xưởng cần biết: in ra mấy file, tốn bao nhiêu
+ * mét, lấp đầy được bao nhiêu, và tiết kiệm được bao nhiêu so với cách in rời cũ.
  */
 import { computed } from 'vue'
 import AppStatTile from '@/components/ui/AppStatTile.vue'
@@ -19,10 +19,10 @@ const savedPct = computed(() => props.stats.savedVsIndividualPct.toFixed(1))
 
 <template>
   <div class="tiles">
-    <AppStatTile label="So file xuat ra" :value="String(stats.totalSheets)" unit="file" />
-    <AppStatTile label="Tong chieu dai" :value="totalLengthCm" unit="cm" tone="accent" />
-    <AppStatTile label="Ty le lap day" :value="fillPct" unit="%" />
-    <AppStatTile label="Tiet kiem so voi in roi" :value="savedPct" unit="%" tone="success" />
+    <AppStatTile label="Số file xuất ra" :value="String(stats.totalSheets)" unit="file" />
+    <AppStatTile label="Tổng chiều dài" :value="totalLengthCm" unit="cm" tone="accent" />
+    <AppStatTile label="Tỷ lệ lấp đầy" :value="fillPct" unit="%" />
+    <AppStatTile label="Tiết kiệm so với in rời" :value="savedPct" unit="%" tone="success" />
   </div>
 </template>
 

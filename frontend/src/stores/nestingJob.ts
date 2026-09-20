@@ -1,9 +1,9 @@
 /**
- * Store trung tam cua luong ghep file.
+ * Store trung tâm của luồng ghép file.
  *
- * Giu toan bo du lieu wizard 3 buoc: danh sach hinh (buoc 1), tham so in (buoc 2), va
- * trang thai job (buoc 3). Dat chung mot cho de quay lai buoc truoc khong mat du lieu -
- * yeu cau ro rang cua nut "Ghep lai voi tham so khac".
+ * Giữ toàn bộ dữ liệu wizard 3 bước: danh sách hình (bước 1), tham số in (bước 2), và
+ * trạng thái job (bước 3). Đặt chung một chỗ để quay lại bước trước không mất dữ liệu —
+ * yêu cầu rõ ràng của nút "Ghép lại với tham số khác".
  */
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -11,17 +11,22 @@ import { createJob, getJob } from '@/api/nesting'
 import { ApiError } from '@/api/client'
 import type { ApiErrorBody, Job, NestItem, NestResult, NestSettings, UploadedFile } from '@/types'
 
-/** Tham so mac dinh, khop voi thoi quen cua xuong. */
+/** Tham số mặc định, khớp với thói quen của xưởng. */
 const DEFAULT_SETTINGS: NestSettings = {
+  // Mặc định giữ chế độ cũ: đây là chế độ đã đo kỹ (478,2 cm / 92,45%) và cho bố trí
+  // thành lưới để cắt. Muốn xếp lồng thì người dùng phải chọn rõ ràng.
+  mode: 'ORTHOGONAL',
   sheetWidthMm: 570,
   marginMm: 5,
   gapMm: 3,
   maxSheetLengthMm: 2000,
   allowRotateGlobal: true,
-  drawCutLines: true,
+  // Mặc định TẮT: phần lớn đơn cắt bế theo viền nên đường cắt vẽ thêm chỉ làm rối bản in.
+  // Ai cần lưới cắt thì bật tay ở bước 2.
+  drawCutLines: false,
 }
 
-/** Khoang cach giua hai lan hoi trang thai job. */
+/** Khoảng cách giữa hai lần hỏi trạng thái job. */
 const POLL_INTERVAL_MS = 700
 
 export const useNestingJobStore = defineStore('nestingJob', () => {
@@ -34,17 +39,17 @@ export const useNestingJobStore = defineStore('nestingJob', () => {
 
   let pollTimer: number | null = null
 
-  // --- Dan xuat ---
+  // --- Dẫn xuất ---
 
-  /** Tong so ban in cua tat ca cac dong. */
+  /** Tổng số bản in của tất cả các dòng. */
   const totalQuantity = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0))
 
-  /** Tong dien tich hinh, don vi mm2. */
+  /** Tổng diện tích hình, đơn vị mm². */
   const totalShapeAreaMm2 = computed(() =>
     items.value.reduce((sum, item) => sum + item.widthMm * item.heightMm * item.quantity, 0),
   )
 
-  /** Da du dieu kien sang buoc 2 chua. */
+  /** Đã đủ điều kiện sang bước 2 chưa. */
   const canProceedToSettings = computed(
     () => items.value.length > 0 && items.value.every((item) => item.widthMm > 0 && item.heightMm > 0),
   )
@@ -55,9 +60,9 @@ export const useNestingJobStore = defineStore('nestingJob', () => {
   )
   const error = computed<ApiErrorBody | null>(() => job.value?.error ?? null)
 
-  // --- Thao tac tren danh sach hinh ---
+  // --- Thao tác trên danh sách hình ---
 
-  /** Them cac file vua tai len vao bang, mac dinh so luong 1 va cho xoay. */
+  /** Thêm các file vừa tải lên vào bảng, mặc định số lượng 1 và cho xoay. */
   function addFiles(files: UploadedFile[]) {
     for (const file of files) {
       items.value.push({
@@ -71,6 +76,9 @@ export const useNestingJobStore = defineStore('nestingJob', () => {
         allowRotate: true,
         previewUrl: file.previewUrl,
         type: file.type,
+        sourceWidthMm: file.sourceWidthMm,
+        sourceHeightMm: file.sourceHeightMm,
+        trimmed: file.trimmed,
       })
     }
   }
@@ -79,7 +87,7 @@ export const useNestingJobStore = defineStore('nestingJob', () => {
     items.value = items.value.filter((item) => item.fileId !== fileId)
   }
 
-  /** Tra kich thuoc mot dong ve dung gia tri doc duoc tu file. */
+  /** Trả kích thước một dòng về đúng giá trị đọc được từ file. */
   function resetItemSize(fileId: string) {
     const item = items.value.find((entry) => entry.fileId === fileId)
     if (item) {
@@ -96,12 +104,12 @@ export const useNestingJobStore = defineStore('nestingJob', () => {
     job.value = null
   }
 
-  // --- Chay job ---
+  // --- Chạy job ---
 
   /**
-   * Gui yeu cau ghep va bat dau hoi trang thai.
+   * Gửi yêu cầu ghép và bắt đầu hỏi trạng thái.
    *
-   * @returns ma job de router dieu huong sang buoc 3
+   * @returns mã job để router điều hướng sang bước 3
    */
   async function submit(): Promise<string> {
     submitting.value = true
@@ -124,8 +132,8 @@ export const useNestingJobStore = defineStore('nestingJob', () => {
       startPolling(created.jobId)
       return created.jobId
     } catch (caught) {
-      // Loi dong bo (vi du hinh rong hon kho) duoc dung thanh mot job FAILED gia lap,
-      // nho vay man ket qua chi co MOT cho de hien loi thay vi hai duong xu ly.
+      // Lỗi đồng bộ (ví dụ hình rộng hơn khổ) được dựng thành một job FAILED giả lập,
+      // nhờ vậy màn kết quả chỉ có MỘT chỗ để hiện lỗi thay vì hai đường xử lý.
       const body: ApiErrorBody =
         caught instanceof ApiError
           ? { code: caught.code, message: caught.message, details: caught.details }
@@ -138,7 +146,7 @@ export const useNestingJobStore = defineStore('nestingJob', () => {
     }
   }
 
-  /** Doc lai trang thai mot job da co (dung khi nguoi dung tai lai trang ket qua). */
+  /** Đọc lại trạng thái một job đã có (dùng khi người dùng tải lại trang kết quả). */
   async function loadJob(id: string) {
     jobId.value = id
     try {
@@ -165,8 +173,8 @@ export const useNestingJobStore = defineStore('nestingJob', () => {
           stopPolling()
         }
       } catch {
-        // Mot lan hoi that bai khong co nghia la job hong (co the chi la mang chap chon).
-        // Cu de vong lap tiep tuc; nguoi dung van co nut thu lai.
+        // Một lần hỏi thất bại không có nghĩa là job hỏng (có thể chỉ là mạng chập chờn).
+        // Cứ để vòng lặp tiếp tục; người dùng vẫn có nút thử lại.
       }
     }, POLL_INTERVAL_MS)
   }

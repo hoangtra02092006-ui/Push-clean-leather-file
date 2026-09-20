@@ -1,24 +1,36 @@
 <script setup lang="ts">
 /**
- * Bang danh sach hinh can ghep.
+ * Bảng danh sách hình cần ghép.
  *
- * O kich thuoc CHO SUA TAY vi metadata file hay sai (file xuat tu Illustrator co the mang
- * vung tran le, anh khong ghi DPI...). Khi da sua, hien nut hoan tac de quay ve dung gia
- * tri doc duoc tu file - tho co the doi y ma khong phai tai lai file.
+ * Ô kích thước CHO SỬA TAY vì metadata file hay sai (file xuất từ Illustrator có thể mang
+ * vùng tràn lề, ảnh không ghi DPI...). Khi đã sửa, hiện nút hoàn tác để quay về đúng giá
+ * trị đọc được từ file — thợ có thể đổi ý mà không phải tải lại file.
+ *
+ * Bấm vào ô xem trước sẽ mở ảnh to giữa màn hình. Ảnh đó là ảnh ĐÃ CẮT khoảng trắng,
+ * đúng bằng kích thước ghi trong bảng, để thợ đối chiếu được ngay ở bước 1 thay vì phải
+ * chạy ghép xong mới phát hiện app hiểu sai khung hình.
  */
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppTable from '@/components/ui/AppTable.vue'
 import AppToggle from '@/components/ui/AppToggle.vue'
 import AppBadge from '@/components/ui/AppBadge.vue'
-import { cmToMm, formatCm } from '@/api/units'
+import { cmToMm, formatCm, parseDecimalInput } from '@/api/units'
 import type { NestItem } from '@/types'
 
 const props = defineProps<{ items: NestItem[] }>()
 const emit = defineEmits<{ remove: [fileId: string]; reset: [fileId: string] }>()
 
-const columns = ['Xem truoc', 'Ten file', 'Rong (cm)', 'Dai (cm)', 'So luong', 'Cho xoay', '']
+const columns = [
+  'Xem trước',
+  'Tên file',
+  { label: 'Rộng (cm)', align: 'right' as const },
+  { label: 'Dài (cm)', align: 'right' as const },
+  { label: 'Số lượng', align: 'right' as const },
+  'Cho xoay',
+  '',
+]
 
-/** Dong nao da bi sua kich thuoc so voi file goc. */
+/** Dòng nào đã bị sửa kích thước so với file gốc. */
 const edited = computed(
   () =>
     new Set(
@@ -31,17 +43,33 @@ const edited = computed(
     ),
 )
 
-/** Gan gia tri cm tu o nhap ve lai mm trong store. */
+/**
+ * Hình đang được xem to; `null` là đang đóng khung phóng to.
+ */
+const zoomed = ref<NestItem | null>(null)
+
+// Nghe Esc ở cấp cửa sổ: bắt trên chính thẻ <div> chỉ chạy khi nó đang được focus, mà
+// người dùng vừa bấm chuột vào ảnh nên focus vẫn nằm ở nút thu nhỏ.
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    zoomed.value = null
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+
+/** Gán giá trị cm từ ô nhập về lại mm trong store. */
 function setWidth(item: NestItem, raw: string) {
-  const value = Number(raw.replace(',', '.'))
-  if (!Number.isNaN(value) && value > 0) {
+  const value = parseDecimalInput(raw)
+  if (value !== null && value > 0) {
     item.widthMm = cmToMm(value)
   }
 }
 
 function setHeight(item: NestItem, raw: string) {
-  const value = Number(raw.replace(',', '.'))
-  if (!Number.isNaN(value) && value > 0) {
+  const value = parseDecimalInput(raw)
+  if (value !== null && value > 0) {
     item.heightMm = cmToMm(value)
   }
 }
@@ -56,17 +84,31 @@ function setQuantity(item: NestItem, raw: string) {
   <AppTable :columns="columns">
     <tr v-for="item in items" :key="item.fileId">
       <td>
-        <span class="thumb">
-          <img :src="item.previewUrl" :alt="`Xem truoc ${item.label}`" loading="lazy" />
-        </span>
+        <button
+          type="button"
+          class="thumb"
+          :title="`Bấm để xem to ${item.label}`"
+          @click="zoomed = item"
+        >
+          <img :src="item.previewUrl" :alt="`Xem trước ${item.label}`" loading="lazy" />
+        </button>
       </td>
 
       <td>
         <span class="name truncate" :title="item.label">{{ item.label }}</span>
         <span class="name__meta">
-          <AppBadge tone="neutral">{{ item.type === 'PDF' ? 'PDF' : 'Anh' }}</AppBadge>
+          <AppBadge tone="neutral">{{ item.type === 'PDF' ? 'PDF' : 'Ảnh' }}</AppBadge>
+          <!-- Báo cho thợ biết app đã tự bỏ phần trắng bao quanh, kèm số gốc để đối
+               chiếu. Không nói ra thì nhìn bảng sẽ tưởng app đọc sai kích thước file. -->
+          <AppBadge
+            v-if="item.trimmed"
+            tone="success"
+            :title="`Khổ trang gốc ${formatCm(item.sourceWidthMm)} x ${formatCm(item.sourceHeightMm)} cm, đã bỏ phần trắng bao quanh`"
+          >
+            đã cắt trắng
+          </AppBadge>
           <span v-if="edited.has(item.fileId)" class="text-xs text-mute">
-            goc {{ formatCm(item.originalWidthMm) }} x {{ formatCm(item.originalHeightMm) }} cm
+            gốc {{ formatCm(item.originalWidthMm) }} x {{ formatCm(item.originalHeightMm) }} cm
           </span>
         </span>
       </td>
@@ -78,7 +120,7 @@ function setQuantity(item: NestItem, raw: string) {
           min="0.1"
           step="0.1"
           :value="formatCm(item.widthMm, 2)"
-          :aria-label="`Chieu rong cua ${item.label}`"
+          :aria-label="`Chiều rộng của ${item.label}`"
           @input="setWidth(item, ($event.target as HTMLInputElement).value)"
         />
       </td>
@@ -90,7 +132,7 @@ function setQuantity(item: NestItem, raw: string) {
           min="0.1"
           step="0.1"
           :value="formatCm(item.heightMm, 2)"
-          :aria-label="`Chieu dai cua ${item.label}`"
+          :aria-label="`Chiều dài của ${item.label}`"
           @input="setHeight(item, ($event.target as HTMLInputElement).value)"
         />
       </td>
@@ -102,13 +144,15 @@ function setQuantity(item: NestItem, raw: string) {
           min="1"
           step="1"
           :value="item.quantity"
-          :aria-label="`So luong cua ${item.label}`"
+          :aria-label="`Số lượng của ${item.label}`"
           @input="setQuantity(item, ($event.target as HTMLInputElement).value)"
         />
       </td>
 
       <td>
-        <AppToggle v-model="item.allowRotate" :label="item.allowRotate ? 'Co' : 'Khong'" />
+        <div class="rotate">
+          <AppToggle v-model="item.allowRotate" :label="item.allowRotate ? 'Có' : 'Không'" />
+        </div>
       </td>
 
       <td>
@@ -117,7 +161,7 @@ function setQuantity(item: NestItem, raw: string) {
             v-if="edited.has(item.fileId)"
             type="button"
             class="icon-btn"
-            title="Tra ve kich thuoc doc tu file"
+            title="Trả về kích thước đọc từ file"
             @click="emit('reset', item.fileId)"
           >
             <svg
@@ -138,7 +182,7 @@ function setQuantity(item: NestItem, raw: string) {
           <button
             type="button"
             class="icon-btn icon-btn--danger"
-            :title="`Xoa ${item.label}`"
+            :title="`Xoá ${item.label}`"
             @click="emit('remove', item.fileId)"
           >
             <svg
@@ -162,18 +206,135 @@ function setQuantity(item: NestItem, raw: string) {
       </td>
     </tr>
   </AppTable>
+
+  <!--
+    Khung phóng to. Dựng ngay trong component này thay vì một modal dùng chung vì nó chỉ
+    có một việc: phóng to đúng ảnh vừa bấm. Bấm ra ngoài hoặc phím Esc đều đóng được.
+  -->
+  <div
+    v-if="zoomed"
+    class="zoom"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="`Xem trước ${zoomed.label}`"
+    @click.self="zoomed = null"
+  >
+    <div class="zoom__panel">
+      <div class="zoom__head">
+        <strong class="truncate" :title="zoomed.label">{{ zoomed.label }}</strong>
+        <button type="button" class="zoom__close" aria-label="Đóng" @click="zoomed = null">
+          &times;
+        </button>
+      </div>
+
+      <div class="zoom__stage">
+        <img :src="zoomed.previewUrl" :alt="`Xem trước ${zoomed.label}`" />
+      </div>
+
+      <p class="zoom__foot num">
+        {{ formatCm(zoomed.widthMm) }} x {{ formatCm(zoomed.heightMm) }} cm
+        <span v-if="zoomed.trimmed" class="text-mute">
+          · đã bỏ phần trắng bao quanh (khổ gốc
+          {{ formatCm(zoomed.sourceWidthMm) }} x {{ formatCm(zoomed.sourceHeightMm) }} cm)
+        </span>
+      </p>
+    </div>
+  </div>
 </template>
 
 <style scoped>
+/*
+  Nhãn của công tắc đổi giữa "Có" và "Không" - hai chuỗi dài ngắn khác nhau. Để mặc cho
+  ô tự co giãn thì mỗi lần bật/tắt là cả bảng bị đẩy sang một khoảng. Chốt bề rộng đủ
+  chứa chuỗi dài hơn thì bảng đứng yên.
+*/
+.rotate :deep(.toggle__label) {
+  display: inline-block;
+  min-width: 3.5rem;
+}
+
 .thumb {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
+  padding: 0;
   border: 1px solid var(--c-border);
   border-radius: var(--r-sm);
   background: var(--c-bg);
   overflow: hidden;
+  cursor: zoom-in;
+  transition: border-color var(--t-fast);
+}
+
+.thumb:hover {
+  border-color: var(--c-accent);
+}
+
+.zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: var(--s-5);
+  background: rgb(15 23 42 / 55%);
+}
+
+.zoom__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  max-width: min(680px, 90vw);
+  padding: var(--s-4);
+  background: var(--c-surface);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
+}
+
+.zoom__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.zoom__close {
+  border: none;
+  background: none;
+  color: var(--c-text-soft);
+  font-size: var(--fs-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Nền ô carô để thấy rõ đâu là phần trong suốt, đâu là nét trắng của hình. */
+.zoom__stage {
+  display: grid;
+  place-items: center;
+  padding: var(--s-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background-color: var(--c-bg);
+  background-image:
+    linear-gradient(45deg, var(--c-border) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--c-border) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--c-border) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--c-border) 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+}
+
+.zoom__stage img {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+}
+
+.zoom__foot {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--c-text-soft);
 }
 
 .thumb img {

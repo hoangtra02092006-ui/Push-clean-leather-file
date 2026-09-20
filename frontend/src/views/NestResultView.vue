@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
- * Buoc 3 - ket qua.
+ * Bước 3 — kết quả.
  *
- * Man nay co ba trang thai ro rang va khong trang thai nao de man hinh trang:
- * dang chay (spinner + dong trang thai), that bai (AppEmptyState the loi, neu ro nguyen
- * nhan), va xong (so lieu + bang + preview).
+ * Màn này có ba trạng thái rõ ràng và không trạng thái nào để màn hình trắng:
+ * đang chạy (spinner + dòng trạng thái), thất bại (AppEmptyState thể lỗi, nêu rõ nguyên
+ * nhân), và xong (số liệu + bảng + preview).
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -31,11 +31,20 @@ const ui = useUiStore()
 
 const activeSheet = ref(0)
 
+/** Cột của bảng chi tiết: bốn cột đầu là số nên căn phải cho thẳng với dữ liệu. */
+const sheetColumns = [
+  { label: 'STT', align: 'right' as const },
+  { label: 'Kích thước (cm)', align: 'right' as const },
+  { label: 'Số hình', align: 'right' as const },
+  { label: 'Lấp đầy', align: 'right' as const },
+  { label: '', align: 'right' as const },
+]
+
 const sheets = computed(() => store.result?.sheets ?? [])
 const currentSheet = computed(() => sheets.value[activeSheet.value] ?? null)
 
 onMounted(() => {
-  // Vao thang bang URL (hoac tai lai trang) thi store chua co gi - phai doc lai job.
+  // Vào thẳng bằng URL (hoặc tải lại trang) thì store chưa có gì — phải đọc lại job.
   if (!store.job || store.job.jobId !== props.jobId) {
     store.loadJob(props.jobId)
   }
@@ -43,20 +52,20 @@ onMounted(() => {
 
 onUnmounted(() => store.stopPolling())
 
-// Ket qua moi ve thi luon hien tam dau tien.
+// Kết quả mới về thì luôn hiện tấm đầu tiên.
 watch(sheets, () => {
   activeSheet.value = 0
 })
 
 /**
- * Che do demo khong dung duoc PDF that (khong co PDFBox tren trinh duyet), nen chan lai
- * va noi ro ly do thay vi de nguoi dung bam vao mot link hong.
+ * Chế độ demo không dựng được PDF thật (không có PDFBox trên trình duyệt), nên chặn lại
+ * và nói rõ lý do thay vì để người dùng bấm vào một link hỏng.
  */
 function guardDownload(event: Event) {
   if (USE_MOCK) {
     event.preventDefault()
     ui.notify(
-      'Che do demo khong xuat duoc PDF that. Hay chay backend va tat VITE_USE_MOCK de tai file.',
+      'Chế độ demo không xuất được PDF thật. Hãy chạy backend và tắt VITE_USE_MOCK để tải file.',
       'info',
     )
   }
@@ -71,42 +80,42 @@ function retry() {
   <div class="stack gap-5">
     <AppStepper :current="3" />
 
-    <PageHeader title="Ket qua ghep" subtitle="Kiem tra bo tri roi tai file PDF gui may in.">
+    <PageHeader title="Kết quả ghép" subtitle="Kiểm tra bố trí rồi tải file PDF gửi máy in.">
       <template #actions>
-        <AppButton variant="ghost" @click="router.push('/')">&larr; Ve trang chu</AppButton>
+        <AppButton variant="ghost" @click="router.push('/')">&larr; Về trang chủ</AppButton>
       </template>
     </PageHeader>
 
-    <!-- Dang chay -->
+    <!-- Đang chạy -->
     <AppCard v-if="store.isRunning" class="running">
       <div class="running__inner">
         <AppSpinner :size="28" />
         <div>
-          <p class="font-semibold">Dang tinh toan bo tri...</p>
+          <p class="font-semibold">Đang tính toán bố trí…</p>
           <p class="text-soft text-sm">
-            App dang thu hang tram phuong an xep de tim cach ton it giay nhat. Viec nay thuong
-            mat vai giay.
+            App đang thử hàng trăm phương án xếp để tìm cách tốn ít giấy nhất. Việc này thường
+            mất vài giây.
           </p>
         </div>
       </div>
     </AppCard>
 
-    <!-- That bai -->
+    <!-- Thất bại -->
     <AppEmptyState
       v-else-if="store.error"
       variant="error"
-      title="Khong ghep duoc"
+      title="Không ghép được"
       :description="store.error.message"
     >
-      <AppButton variant="primary" @click="retry">Sua tham so va thu lai</AppButton>
+      <AppButton variant="primary" @click="retry">Sửa tham số và thử lại</AppButton>
     </AppEmptyState>
 
     <!-- Xong -->
     <template v-else-if="store.result">
       <ResultSummary :stats="store.result.stats" />
 
-      <AppCard title="Chi tiet tung file">
-        <AppTable :columns="['STT', 'Kich thuoc (cm)', 'So hinh', 'Lap day', '']">
+      <AppCard title="Chi tiết từng file">
+        <AppTable :columns="sheetColumns">
           <tr v-for="sheet in sheets" :key="sheet.index">
             <td class="col-num">{{ sheet.index + 1 }}</td>
             <td class="col-num">
@@ -122,14 +131,14 @@ function retry() {
                 rel="noopener"
                 @click="guardDownload"
               >
-                Tai PDF
+                Tải PDF
               </a>
             </td>
           </tr>
         </AppTable>
       </AppCard>
 
-      <AppCard title="Xem truoc bo tri" subtitle="Di chuot len tung hinh de xem ten file va kich thuoc.">
+      <AppCard title="Xem trước bố trí" subtitle="Di chuột lên từng hình để xem tên file và kích thước.">
         <template #actions>
           <div v-if="sheets.length > 1" class="tabs">
             <button
@@ -139,7 +148,7 @@ function retry() {
               :class="['tabs__btn', { 'tabs__btn--active': sheet.index === activeSheet }]"
               @click="activeSheet = sheet.index"
             >
-              Tam {{ sheet.index + 1 }}
+              Tấm {{ sheet.index + 1 }}
             </button>
           </div>
         </template>
@@ -148,7 +157,7 @@ function retry() {
       </AppCard>
 
       <div class="actions">
-        <AppButton variant="secondary" @click="retry">Ghep lai voi tham so khac</AppButton>
+        <AppButton variant="secondary" @click="retry">Ghép lại với tham số khác</AppButton>
         <a
           class="btn-link"
           :href="exportZipUrl(jobId)"
@@ -156,14 +165,14 @@ function retry() {
           rel="noopener"
           @click="guardDownload"
         >
-          Tai tat ca (.zip)
+          Tải tất cả (.zip)
         </a>
       </div>
     </template>
 
-    <!-- Chua co gi (dang doc lai job) -->
+    <!-- Chưa có gì (đang đọc lại job) -->
     <AppCard v-else>
-      <AppSpinner :size="20" label="Dang doc ket qua..." />
+      <AppSpinner :size="20" label="Đang đọc kết quả…" />
     </AppCard>
   </div>
 </template>
@@ -210,7 +219,7 @@ function retry() {
   gap: var(--s-2);
 }
 
-/* Nut chinh cua man nay la mot the <a> vi no tai file that, khong phai goi JS. */
+/* Nút chính của màn này là một thẻ <a> vì nó tải file thật, không phải gọi JS. */
 .btn-link {
   display: inline-flex;
   align-items: center;

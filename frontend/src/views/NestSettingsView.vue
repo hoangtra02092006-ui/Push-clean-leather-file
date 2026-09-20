@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Buoc 2 - nhap tham so kho in roi chay ghep. */
+/** Bước 2 — nhập tham số khổ in rồi chạy ghép. */
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -25,9 +25,9 @@ async function submit() {
     const jobId = await store.submit()
     router.push({ name: 'nest-result', params: { jobId } })
   } catch (error) {
-    // Loi dong bo (vi du hinh rong hon kho) da duoc store ghi vao job.error; van bao mot
-    // toast de nguoi dung thay ngay ma khong phai doi chuyen man hinh.
-    ui.error(error instanceof ApiError ? error.message : 'Khong gui duoc yeu cau ghep.')
+    // Lỗi đồng bộ (ví dụ hình rộng hơn khổ) đã được store ghi vào job.error; vẫn báo một
+    // toast để người dùng thấy ngay mà không phải đợi chuyển màn hình.
+    ui.error(error instanceof ApiError ? error.message : 'Không gửi được yêu cầu ghép.')
   }
 }
 </script>
@@ -37,47 +37,47 @@ async function submit() {
     <AppStepper :current="2" />
 
     <PageHeader
-      title="Tham so in"
-      subtitle="Khai bao kho cuon va khoang cach. Day la nhung so quyet dinh so met giay phai dung."
+      title="Tham số in"
+      subtitle="Khai báo khổ cuộn và khoảng cách. Đây là những số quyết định số mét giấy phải dùng."
     >
       <template #actions>
-        <AppButton variant="ghost" @click="router.push('/')">&larr; Ve trang chu</AppButton>
+        <AppButton variant="ghost" @click="router.push('/')">&larr; Về trang chủ</AppButton>
       </template>
     </PageHeader>
 
     <div class="layout">
       <SettingsForm ref="form" v-model="store.settings" />
 
-      <!-- Bang tom tat chi doc: de tho doi chieu lai danh sach ma khong phai lui buoc. -->
-      <AppCard title="Danh sach se ghep" :subtitle="`${formatCount(store.items.length)} loai hinh`">
+      <!-- Bảng tóm tắt chỉ đọc: để thợ đối chiếu lại danh sách mà không phải lùi bước. -->
+      <AppCard title="Danh sách sẽ ghép" :subtitle="`${formatCount(store.items.length)} loại hình`">
         <ul class="summary">
           <li v-for="item in store.items" :key="item.fileId" class="summary__row">
             <span class="summary__name truncate" :title="item.label">{{ item.label }}</span>
             <span class="summary__meta num">
               {{ formatCm(item.widthMm) }} x {{ formatCm(item.heightMm) }} cm
               <AppBadge tone="neutral">x{{ item.quantity }}</AppBadge>
-              <AppBadge v-if="!item.allowRotate" tone="warn">khoa xoay</AppBadge>
+              <AppBadge v-if="!item.allowRotate" tone="warn">khoá xoay</AppBadge>
             </span>
           </li>
         </ul>
 
         <div class="summary__total num">
-          <span>Tong ban in</span>
+          <span>Tổng bản in</span>
           <strong>{{ formatCount(store.totalQuantity) }}</strong>
         </div>
         <div class="summary__total num">
-          <span>Dien tich hinh</span>
-          <strong>{{ formatAreaCm2(store.totalShapeAreaMm2) }} cm2</strong>
+          <span>Diện tích hình</span>
+          <strong>{{ formatAreaCm2(store.totalShapeAreaMm2) }} cm²</strong>
         </div>
       </AppCard>
     </div>
 
     <div class="actions">
       <AppButton variant="secondary" @click="router.push({ name: 'nest-upload' })">
-        &larr; Quay lai
+        &larr; Quay lại
       </AppButton>
       <AppButton variant="primary" :disabled="!canSubmit" :loading="store.submitting" @click="submit">
-        Ghep file
+        Ghép file
       </AppButton>
     </div>
   </div>

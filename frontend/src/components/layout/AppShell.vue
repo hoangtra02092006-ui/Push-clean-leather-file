@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Khung chung cua moi trang: header dinh, vung noi dung gioi han be ngang, toast. */
+/** Khung chung của mọi trang: header dính, vùng nội dung giới hạn bề ngang, toast. */
 import AppHeader from './AppHeader.vue'
 import AppToast from '@/components/ui/AppToast.vue'
 </script>
@@ -26,7 +26,7 @@ import AppToast from '@/components/ui/AppToast.vue'
   width: 100%;
   max-width: var(--layout-max);
   margin: 0 auto;
-  /* Gutter 16px o man hinh hep theo dung quy uoc trong design system. */
+  /* Gutter 16px ở màn hình hẹp theo đúng quy ước trong design system. */
   padding: var(--s-6) var(--s-4) var(--s-8);
 }
 </style>

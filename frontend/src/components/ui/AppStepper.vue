@@ -1,29 +1,53 @@
 <script setup lang="ts">
 /**
- * Thanh buoc cua wizard.
+ * Thanh bước của wizard.
  *
- * Buoc DA QUA bam quay lai duoc; buoc CHUA TOI bi khoa. Khoa bang `disabled` that chu
- * khong chi lam mo, de bam nham khong nhay sang man hinh thieu du lieu.
+ * Một bước bấm được khi nó đã có đủ dữ liệu để hiển thị, chứ không phải khi nó nằm
+ * trước bước hiện tại. Nhờ vậy sau khi có kết quả, thợ nhảy tự do giữa bước 1, 2 và 3
+ * để sửa số lượng hay tham số rồi quay lại xem kết quả cũ mà không mất gì.
+ *
+ * Bước chưa đủ dữ liệu vẫn bị khoá bằng `disabled` thật chứ không chỉ làm mờ, để bấm
+ * nhầm không nhảy sang màn hình trống.
  */
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useNestingJobStore } from '@/stores/nestingJob'
 
 const props = defineProps<{ current: number }>()
 const router = useRouter()
+const store = useNestingJobStore()
 
-const steps = [
-  { index: 1, label: 'Nap file', route: 'nest-upload' },
-  { index: 2, label: 'Tham so in', route: 'nest-settings' },
-  { index: 3, label: 'Ket qua', route: null },
-]
+const steps = computed(() => [
+  { index: 1, label: 'Nạp file', to: { name: 'nest-upload' }, open: true },
+  {
+    index: 2,
+    label: 'Tham số in',
+    to: { name: 'nest-settings' },
+    open: store.items.length > 0,
+  },
+  {
+    index: 3,
+    label: 'Kết quả',
+    to: { name: 'nest-result', params: { jobId: store.jobId ?? '' } },
+    // Chỉ mở khi đã thực sự chạy một job; nếu không, route sẽ thiếu jobId.
+    open: store.jobId !== null,
+  },
+])
 
-function go(step: (typeof steps)[number]) {
-  if (step.index >= props.current || !step.route) return
-  router.push({ name: step.route })
+type Step = (typeof steps.value)[number]
+
+function enabled(step: Step): boolean {
+  return step.open && step.index !== props.current
+}
+
+function go(step: Step) {
+  if (!enabled(step)) return
+  router.push(step.to)
 }
 </script>
 
 <template>
-  <nav class="stepper" aria-label="Cac buoc ghep file">
+  <nav class="stepper" aria-label="Các bước ghép file">
     <button
       v-for="step in steps"
       :key="step.index"
@@ -32,10 +56,10 @@ function go(step: (typeof steps)[number]) {
         'stepper__step',
         {
           'stepper__step--active': step.index === current,
-          'stepper__step--done': step.index < current,
+          'stepper__step--done': step.index !== current && step.open,
         },
       ]"
-      :disabled="step.index >= current || !step.route"
+      :disabled="!enabled(step)"
       :aria-current="step.index === current ? 'step' : undefined"
       @click="go(step)"
     >

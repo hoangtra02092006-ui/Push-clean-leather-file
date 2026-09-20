@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** O nhap chu. Luon co label gan `for` de bam vao label la focus duoc vao o. */
+/** Ô nhập chữ. Luôn có label gắn `for` để bấm vào label là focus được vào ô. */
 import { useId } from '@/composables/useId'
 
 defineProps<{

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
- * Ve mot tam bang SVG theo dung ty le.
+ * Vẽ một tấm bằng SVG theo đúng tỷ lệ.
  *
- * Chon SVG thay vi canvas vi: hinh net o moi muc phong, moi hinh chu nhat la mot phan tu
- * that nen gan tooltip va su kien chuot truc tiep duoc, va khong phai tu ve lai khi doi
- * kich thuoc cua so.
+ * Chọn SVG thay vì canvas vì: hình nét ở mọi mức phóng, mỗi hình chữ nhật là một phần tử
+ * thật nên gắn tooltip và sự kiện chuột trực tiếp được, và không phải tự vẽ lại khi đổi
+ * kích thước cửa sổ.
  *
- * He toa do: backend tra goc TRAI-DUOI (quy uoc cua PDF), con SVG lay goc TRAI-TREN. Ta
- * lat truc Y mot lan duy nhat o day, de moi phep tinh con lai doc thang.
+ * Hệ toạ độ: backend trả gốc TRÁI-DƯỚI (quy ước của PDF), còn SVG lấy gốc TRÁI-TRÊN. Ta
+ * lật trục Y một lần duy nhất ở đây, để mọi phép tính còn lại đọc thẳng.
  */
 import { computed, ref } from 'vue'
 import { formatCm } from '@/api/units'
@@ -15,7 +15,7 @@ import type { Placement, Sheet } from '@/types'
 
 const props = defineProps<{ sheet: Sheet }>()
 
-/** Bang mau phan loai - khop dung thu tu voi --c-cat-* trong tokens.css. */
+/** Bảng màu phân loại — khớp đúng thứ tự với --c-cat-* trong tokens.css. */
 const CATEGORY_COLORS = [
   'var(--c-cat-1)',
   'var(--c-cat-2)',
@@ -27,7 +27,7 @@ const CATEGORY_COLORS = [
   'var(--c-cat-8)',
 ]
 
-/** Be rong dai thuoc do ben ngoai, tinh theo don vi milimet cua he toa do SVG. */
+/** Bề rộng dải thước đo bên ngoài, tính theo đơn vị milimét của hệ toạ độ SVG. */
 const RULER_MM = 26
 
 const hovered = ref<Placement | null>(null)
@@ -44,25 +44,25 @@ function colorOf(placement: Placement): string {
   return CATEGORY_COLORS[placement.categoryIndex % CATEGORY_COLORS.length]
 }
 
-/** Lat truc Y: y cua SVG = chieu dai tam - (y duoi + chieu cao hinh). */
+/** Lật trục Y: y của SVG = chiều dài tấm − (y dưới + chiều cao hình). */
 function topOf(placement: Placement): number {
   return props.sheet.lengthMm - placement.yMm - placement.hMm
 }
 
 /**
- * Chi ghi nhan kich thuoc vao giua hinh khi hinh du rong/du cao.
- * Nhan chen chuc trong o be xiu con kho doc hon la khong co nhan.
+ * Chỉ ghi nhãn kích thước vào giữa hình khi hình đủ rộng/đủ cao.
+ * Nhãn chen chúc trong ô bé xíu còn khó đọc hơn là không có nhãn.
  */
 function fitsLabel(placement: Placement): boolean {
   return placement.wMm >= 45 && placement.hMm >= 22
 }
 
-/** Co chu cua nhan, tinh theo mm de khong bi phong to qua da khi tam nho. */
+/** Cỡ chữ của nhãn, tính theo mm để không bị phóng to quá đà khi tấm nhỏ. */
 function labelSize(placement: Placement): number {
   return Math.min(11, Math.max(6, Math.min(placement.wMm / 6, placement.hMm / 3)))
 }
 
-/** Vach chia thuoc do: moi 10 cm mot vach. */
+/** Vạch chia thước đo: mỗi 10 cm một vạch. */
 const ticksX = computed(() => buildTicks(props.sheet.widthMm))
 const ticksY = computed(() => buildTicks(props.sheet.lengthMm))
 
@@ -91,8 +91,8 @@ function updatePointer(event: MouseEvent) {
 <template>
   <div class="preview">
     <svg :viewBox="viewBox" class="preview__svg" role="img"
-      :aria-label="`Bo tri tam ${sheet.index + 1}: ${sheet.placements.length} hinh`">
-      <!-- Nen tam -->
+      :aria-label="`Bố trí tấm ${sheet.index + 1}: ${sheet.placements.length} hình`">
+      <!-- Nền tấm -->
       <rect
         x="0"
         y="0"
@@ -101,7 +101,7 @@ function updatePointer(event: MouseEvent) {
         class="sheet-bg"
       />
 
-      <!-- Thuoc do canh tren -->
+      <!-- Thước đo cạnh trên -->
       <g class="ruler">
         <line x1="0" :y1="-6" :x2="sheet.widthMm" :y2="-6" />
         <template v-for="tick in ticksX" :key="`x-${tick}`">
@@ -110,7 +110,7 @@ function updatePointer(event: MouseEvent) {
         </template>
       </g>
 
-      <!-- Thuoc do canh trai (so do tu duoi len, dung chieu voi ban in) -->
+      <!-- Thước đo cạnh trái (số đo từ dưới lên, đúng chiều với bản in) -->
       <g class="ruler">
         <line :x1="-6" y1="0" :x2="-6" :y2="sheet.lengthMm" />
         <template v-for="tick in ticksY" :key="`y-${tick}`">
@@ -126,7 +126,7 @@ function updatePointer(event: MouseEvent) {
         </template>
       </g>
 
-      <!-- Cac hinh da dat -->
+      <!-- Các hình đã đặt -->
       <g
         v-for="(placement, index) in sheet.placements"
         :key="`${placement.fileId}-${index}`"
@@ -160,7 +160,7 @@ function updatePointer(event: MouseEvent) {
         </text>
       </g>
 
-      <!-- Vien kho, ve sau cung de luon nam tren -->
+      <!-- Viền khổ, vẽ sau cùng để luôn nằm trên -->
       <rect
         x="0"
         y="0"
@@ -178,10 +178,10 @@ function updatePointer(event: MouseEvent) {
       <strong class="tooltip__name">{{ hovered.label }}</strong>
       <span class="num">{{ formatCm(hovered.wMm) }} x {{ formatCm(hovered.hMm) }} cm</span>
       <span class="num text-mute">
-        vi tri {{ formatCm(hovered.xMm) }} ; {{ formatCm(hovered.yMm) }} cm
+        vị trí {{ formatCm(hovered.xMm) }} ; {{ formatCm(hovered.yMm) }} cm
       </span>
       <span :class="hovered.rotated ? 'text-accent' : 'text-mute'">
-        {{ hovered.rotated ? 'Da xoay 90 do' : 'Giu nguyen huong' }}
+        {{ hovered.rotated ? 'Đã xoay 90 độ' : 'Giữ nguyên hướng' }}
       </span>
     </div>
   </div>
@@ -199,7 +199,7 @@ function updatePointer(event: MouseEvent) {
 .preview__svg {
   display: block;
   width: 100%;
-  /* Tam rat dai nen gioi han chieu cao va cho cuon, thay vi ep vao mot khung be ti. */
+  /* Tấm rất dài nên giới hạn chiều cao và cho cuộn, thay vì ép vào một khung bé tí. */
   max-height: 70vh;
 }
 

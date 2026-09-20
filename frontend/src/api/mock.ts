@@ -8,6 +8,9 @@
  *
  * KHAC BIET SO VOI BACKEND (co y, de giu bundle nho va chay muot):
  * - Chi dung mot heuristic (Best Short Side Fit) thay vi duyet hang tram phuong an.
+ * - KHONG ho tro hai che do xep long (FREE va TRUE_SHAPE): doc vector de biet cho nao
+ *   trong ben trong khung bao can mot bo phan tich PDF day du, qua nang cho trinh duyet.
+ *   Che do demo luon xep nhu ORTHOGONAL du nguoi dung chon gi.
  * - Khong co buoc tinh chinh cuc bo, nen ty le lap day thap hon ban that vai phan tram.
  * - Khong xuat duoc PDF that: nut tai ve se bao cho nguoi dung biet dieu do.
  *
@@ -111,6 +114,12 @@ export async function mockUpload(files: File[]): Promise<UploadedFile[]> {
       originalName: file.name,
       widthMm,
       heightMm,
+      // Che do demo KHONG cat khoang trang: doc content stream cua PDF doi hoi mot bo
+      // phan tich day du, qua nang de nhet vao bundle trinh duyet. Bang se bao kich
+      // thuoc tron kho trang; ban chay backend that moi co so da cat.
+      sourceWidthMm: widthMm,
+      sourceHeightMm: heightMm,
+      trimmed: false,
       type: file.type.startsWith('image/') ? 'IMAGE' : 'PDF',
       pageCount: 1,
       previewUrl: URL.createObjectURL(file),

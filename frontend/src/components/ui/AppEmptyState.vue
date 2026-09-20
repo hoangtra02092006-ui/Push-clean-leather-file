@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * Trang thai rong / loi.
+ * Trạng thái rỗng / lỗi.
  *
- * BAT BUOC dung o moi cho co the khong co du lieu. Mot khung trang tro khien nguoi dung
- * tuong app hong; mot dong huong dan thi ho biet phai lam gi tiep.
+ * BẮT BUỘC dùng ở mọi chỗ có thể không có dữ liệu. Một khung trắng trơ khiến người dùng
+ * tưởng app hỏng; một dòng hướng dẫn thì họ biết phải làm gì tiếp.
  */
 withDefaults(defineProps<{ title: string; description?: string; variant?: 'empty' | 'error' }>(), {
   variant: 'empty',

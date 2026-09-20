@@ -13,8 +13,14 @@ export type FileKind = 'PDF' | 'IMAGE'
 export interface UploadedFile {
   id: string
   originalName: string
+  /** Kich thuoc DUNG DE XEP - backend da cat bo khoang trang bao quanh. */
   widthMm: number
   heightMm: number
+  /** Kich thuoc kho trang nguyen ban, truoc khi cat. */
+  sourceWidthMm: number
+  sourceHeightMm: number
+  /** Co cat duoc khoang trang nao khong - giao dien hien chu thich. */
+  trimmed: boolean
   type: FileKind
   pageCount: number
   previewUrl: string
@@ -36,10 +42,23 @@ export interface NestItem {
   allowRotate: boolean
   previewUrl: string
   type: FileKind
+  /** Kho trang nguyen ban va co da cat khoang trang chua - chi de hien chu thich. */
+  sourceWidthMm: number
+  sourceHeightMm: number
+  trimmed: boolean
 }
+
+/** Cach thuat toan duoc phep sap xep hinh. */
+export type NestingMode = 'ORTHOGONAL' | 'FREE' | 'TRUE_SHAPE'
 
 /** Tham so khoi in. */
 export interface NestSettings {
+  /**
+   * ORTHOGONAL: chi xoay 0 hoac 90 do, moi hinh chiem tron khung bao chu nhat.
+   * FREE: cho phep hinh nho chui LOT HAN vao phan trong ben trong khung bao hinh lon.
+   * TRUE_SHAPE: khung bao duoc chong nhau, chi net ve la khong duoc cham; xoay nhieu goc.
+   */
+  mode: NestingMode
   sheetWidthMm: number
   marginMm: number
   gapMm: number

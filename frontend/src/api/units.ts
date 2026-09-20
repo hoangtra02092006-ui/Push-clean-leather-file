@@ -36,3 +36,27 @@ export function formatPercent(ratio: number, digits = 1): string {
 export function formatCount(value: number): string {
   return value.toLocaleString('vi-VN')
 }
+
+/**
+ * Doc mot so tu chuoi nguoi dung go vao o nhap.
+ *
+ * <p>Tach rieng ra khoi component de co the kiem thu duoc. Mot lan o nhap so bi hong am
+ * tham suot nhieu phien ban ma khong ai biet, vi khong co cho nao kiem duoc phan nay.
+ *
+ * <p>Chap nhan ca dau phay lan dau cham lam dau thap phan: nguoi Viet go "2,5" theo thoi
+ * quen, va khong co ly do gi bat ho doi thoi quen.
+ *
+ * @param raw chuoi tho tu o nhap; cung chap nhan so phong khi ben goi da tu doi kieu
+ * @returns so doc duoc, hoac null neu o trong / khong doc duoc
+ */
+export function parseDecimalInput(raw: string | number | null | undefined): number | null {
+  if (typeof raw === 'number') {
+    return Number.isNaN(raw) ? null : raw
+  }
+  const trimmed = String(raw ?? '').trim()
+  if (trimmed === '') {
+    return null
+  }
+  const parsed = Number(trimmed.replace(',', '.'))
+  return Number.isNaN(parsed) ? null : parsed
+}

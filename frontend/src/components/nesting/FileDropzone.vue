@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * Vung keo tha file.
+ * Vùng kéo thả file.
  *
- * Nhan nhieu file cung luc, hien tien do tung file. Loi cua MOT file khong lam hong ca
- * me: file nao hong thi bao rieng file do, cac file con lai van vao bang.
+ * Nhận nhiều file cùng lúc, hiện tiến độ từng file. Lỗi của MỘT file không làm hỏng cả
+ * mẻ: file nào hỏng thì báo riêng file đó, các file còn lại vẫn vào bảng.
  */
 import { ref } from 'vue'
 import { uploadFiles } from '@/api/files'
@@ -31,7 +31,7 @@ function onSelect(event: Event) {
   if (input.files) {
     handleFiles(Array.from(input.files))
   }
-  // Xoa gia tri de chon lai DUNG file vua roi van kich hoat su kien change.
+  // Xoá giá trị để chọn lại ĐÚNG file vừa rồi vẫn kích hoạt sự kiện change.
   input.value = ''
 }
 
@@ -43,7 +43,7 @@ function onDrop(event: DragEvent) {
   }
 }
 
-/** Tai lan luot tung file de con biet file nao hong ma bao dung ten. */
+/** Tải lần lượt từng file để còn biết file nào hỏng mà báo đúng tên. */
 async function handleFiles(files: File[]) {
   if (files.length === 0) return
 
@@ -60,18 +60,18 @@ async function handleFiles(files: File[]) {
       uploaded.push(...result)
     } catch (error) {
       progress.value[i].failed = true
-      const message = error instanceof ApiError ? error.message : 'Khong tai duoc file.'
+      const message = error instanceof ApiError ? error.message : 'Không tải được file.'
       ui.error(`${files[i].name}: ${message}`)
     }
   }
 
   if (uploaded.length > 0) {
     emit('uploaded', uploaded)
-    ui.success(`Da nap ${uploaded.length} file.`)
+    ui.success(`Đã nạp ${uploaded.length} file.`)
   }
 
   uploading.value = false
-  // Giu thanh tien do mot nhip cho nguoi dung kip thay roi don di.
+  // Giữ thanh tiến độ một nhịp cho người dùng kịp thấy rồi dọn đi.
   window.setTimeout(() => {
     progress.value = []
   }, 1200)
@@ -103,11 +103,11 @@ async function handleFiles(files: File[]) {
         </svg>
       </span>
 
-      <p class="dropzone__title">Keo tha file in vao day</p>
-      <p class="dropzone__hint">Nhan file PDF, PNG, JPG - chon duoc nhieu file cung luc.</p>
+      <p class="dropzone__title">Kéo thả file in vào đây</p>
+      <p class="dropzone__hint">Nhận file PDF, PNG, JPG — chọn được nhiều file cùng lúc.</p>
 
       <AppButton variant="secondary" :loading="uploading" @click="pickFiles">
-        Chon file
+        Chọn file
       </AppButton>
 
       <input
@@ -129,7 +129,7 @@ async function handleFiles(files: File[]) {
             :style="{ width: `${entry.failed ? 100 : entry.percent}%` }"
           />
         </span>
-        <span class="progress__pct num">{{ entry.failed ? 'Loi' : `${entry.percent}%` }}</span>
+        <span class="progress__pct num">{{ entry.failed ? 'Lỗi' : `${entry.percent}%` }}</span>
       </li>
     </ul>
   </div>

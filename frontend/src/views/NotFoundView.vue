@@ -9,9 +9,9 @@ const router = useRouter()
 
 <template>
   <AppEmptyState
-    title="Khong tim thay trang"
-    description="Duong dan ban vua mo khong ton tai. Hay quay ve trang chu de chon chuc nang."
+    title="Không tìm thấy trang"
+    description="Đường dẫn bạn vừa mở không tồn tại. Hãy quay về trang chủ để chọn chức năng."
   >
-    <AppButton variant="primary" @click="router.push('/')">Ve trang chu</AppButton>
+    <AppButton variant="primary" @click="router.push('/')">Về trang chủ</AppButton>
   </AppEmptyState>
 </template>

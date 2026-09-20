@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
- * Man quan ly chung - cua ngo duy nhat cua app.
+ * Màn quản lý chung — cửa ngõ duy nhất của app.
  *
- * Vao app la thay man nay; phai bam vao mot o chuc nang moi di tiep. Cac o "Sap co" duoc
- * de san chu khong an di, de nguoi dung thay huong phat trien va khong di tim chuc nang
- * o noi khac.
+ * Vào app là thấy màn này; phải bấm vào một ô chức năng mới đi tiếp. Các ô "Sắp có" được
+ * để sẵn chứ không ẩn đi, để người dùng thấy hướng phát triển và không đi tìm chức năng
+ * ở nơi khác.
  */
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -28,43 +28,43 @@ const store = useNestingJobStore()
 const features: FeatureCard[] = [
   {
     key: 'nest',
-    title: 'Ghep file in',
-    description: 'Tu dan khuon nhieu file len kho cuon sao cho ton it met nhat.',
+    title: 'Ghép file in',
+    description: 'Tự dàn khuôn nhiều file lên khổ cuộn sao cho tốn ít mét nhất.',
     icon: 'layout-grid',
     available: true,
     route: 'nest-upload',
   },
   {
     key: 'library',
-    title: 'Thu vien file',
-    description: 'Luu cac mau in hay dung de khong phai tai lai moi lan.',
+    title: 'Thư viện file',
+    description: 'Lưu các mẫu in hay dùng để không phải tải lại mỗi lần.',
     icon: 'folder',
     available: false,
   },
   {
     key: 'history',
-    title: 'Lich su ghep',
-    description: 'Xem lai cac lan ghep truoc va tai lai file da xuat.',
+    title: 'Lịch sử ghép',
+    description: 'Xem lại các lần ghép trước và tải lại file đã xuất.',
     icon: 'history',
     available: false,
   },
   {
     key: 'preset',
-    title: 'Preset kho in',
-    description: 'Luu san bo tham so cho tung loai cuon va tung may in.',
+    title: 'Preset khổ in',
+    description: 'Lưu sẵn bộ tham số cho từng loại cuộn và từng máy in.',
     icon: 'sliders',
     available: false,
   },
   {
     key: 'report',
-    title: 'Bao cao tiet kiem',
-    description: 'Thong ke so met va so tien da tiet kiem theo thang.',
+    title: 'Báo cáo tiết kiệm',
+    description: 'Thống kê số mét và số tiền đã tiết kiệm theo tháng.',
     icon: 'bar-chart',
     available: false,
   },
 ]
 
-/** Bat dau luong moi: xoa du lieu cu de khong lan sang don truoc. */
+/** Bắt đầu luồng mới: xoá dữ liệu cũ để không lẫn sang đơn trước. */
 function open(card: FeatureCard) {
   if (!card.available || !card.route) return
   store.clearAll()
@@ -75,8 +75,8 @@ function open(card: FeatureCard) {
 <template>
   <div>
     <PageHeader
-      title="Cong cu san xuat"
-      subtitle="Chon mot chuc nang de bat dau. Hien tai chuc nang ghep file da san sang dung."
+      title="Công cụ sản xuất"
+      subtitle="Chọn một chức năng để bắt đầu. Hiện tại chức năng ghép file đã sẵn sàng dùng."
     />
 
     <div class="grid">
@@ -91,8 +91,8 @@ function open(card: FeatureCard) {
         @click="open(card)"
       >
         <span class="card__icon" aria-hidden="true">
-          <!-- Icon ve tay theo bo Lucide: SVG inline, net stroke, 24px. Khong nap font
-               icon de khong them mot request va mot phu thuoc chi de ve 5 hinh. -->
+          <!-- Icon vẽ tay theo bộ Lucide: SVG inline, nét stroke, 24px. Không nạp font
+               icon để không thêm một request và một phụ thuộc chỉ để vẽ 5 hình. -->
           <svg
             width="24"
             height="24"
@@ -140,8 +140,8 @@ function open(card: FeatureCard) {
         </span>
 
         <span class="card__foot">
-          <AppBadge v-if="!card.available" tone="neutral">Sap co</AppBadge>
-          <AppBadge v-else tone="success">Hoat dong</AppBadge>
+          <AppBadge v-if="!card.available" tone="neutral">Sắp có</AppBadge>
+          <AppBadge v-else tone="success">Hoạt động</AppBadge>
           <span v-if="card.available" class="card__arrow" aria-hidden="true">&rarr;</span>
         </span>
       </component>
@@ -181,7 +181,7 @@ function open(card: FeatureCard) {
   transition: border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
 }
 
-/* O dang hoat dong: vien dam hon mot bac, hover nhac len 2px. */
+/* Ô đang hoạt động: viền đậm hơn một bậc, hover nhấc lên 2px. */
 .card--live {
   background: var(--c-surface);
   border: 1px solid var(--c-border-strong);
@@ -195,7 +195,7 @@ function open(card: FeatureCard) {
   box-shadow: var(--sh-2);
 }
 
-/* O chua lam: nen xam, chu mo, con tro bao khong bam duoc. */
+/* Ô chưa làm: nền xám, chữ mờ, con trỏ báo không bấm được. */
 .card--soon {
   background: var(--c-bg);
   border: 1px dashed var(--c-border);

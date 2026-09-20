@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Buoc 1 - nap file va khai bao so luong. */
+/** Bước 1 — nạp file và khai báo số lượng. */
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -17,9 +17,9 @@ const store = useNestingJobStore()
 
 const summary = computed(
   () =>
-    `Tong: ${formatCount(store.items.length)} loai hinh - ` +
-    `${formatCount(store.totalQuantity)} ban - ` +
-    `dien tich hinh ${formatAreaCm2(store.totalShapeAreaMm2)} cm2`,
+    `Tổng: ${formatCount(store.items.length)} loại hình · ` +
+    `${formatCount(store.totalQuantity)} bản · ` +
+    `diện tích hình ${formatAreaCm2(store.totalShapeAreaMm2)} cm²`,
 )
 
 function onUploaded(files: UploadedFile[]) {
@@ -35,9 +35,9 @@ function next() {
   <div class="stack gap-5">
     <AppStepper :current="1" />
 
-    <PageHeader title="Nap file in" subtitle="Chon cac file can in va khai bao so luong moi loai.">
+    <PageHeader title="Nạp file in" subtitle="Chọn các file cần in và khai báo số lượng mỗi loại.">
       <template #actions>
-        <AppButton variant="ghost" @click="router.push('/')">&larr; Ve trang chu</AppButton>
+        <AppButton variant="ghost" @click="router.push('/')">&larr; Về trang chủ</AppButton>
       </template>
     </PageHeader>
 
@@ -45,8 +45,8 @@ function next() {
 
     <AppEmptyState
       v-if="store.items.length === 0"
-      title="Chua co file nao"
-      description="Keo tha file PDF, PNG hoac JPG vao khung phia tren. App se tu doc kich thuoc that cua tung file; neu doc sai, ban sua lai truc tiep trong bang."
+      title="Chưa có file nào"
+      description="Kéo thả file PDF, PNG hoặc JPG vào khung phía trên. App sẽ tự đọc kích thước thật của từng file; nếu đọc sai, bạn sửa lại trực tiếp trong bảng."
     />
 
     <template v-else>
@@ -56,11 +56,11 @@ function next() {
         @reset="store.resetItemSize"
       />
 
-      <!-- Chan trang dinh: tho luon nhin thay tong so va nut di tiep du bang dai the nao. -->
+      <!-- Chân trang dính: thợ luôn nhìn thấy tổng số và nút đi tiếp dù bảng dài thế nào. -->
       <div class="footbar">
         <span class="footbar__summary num">{{ summary }}</span>
         <AppButton variant="primary" :disabled="!store.canProceedToSettings" @click="next">
-          Tiep tuc &rarr;
+          Tiếp tục &rarr;
         </AppButton>
       </div>
     </template>

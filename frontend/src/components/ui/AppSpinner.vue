@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Vong quay cho. Bat buoc dung o moi trang thai dang tai - khong de man hinh trang tro. */
+/** Vòng quay chờ. Bắt buộc dùng ở mọi trạng thái đang tải — không để màn hình trắng trơ. */
 withDefaults(defineProps<{ size?: number; label?: string; inline?: boolean }>(), {
   size: 20,
   label: '',
@@ -13,7 +13,7 @@ withDefaults(defineProps<{ size?: number; label?: string; inline?: boolean }>(),
       class="spinner"
       :style="{ width: `${size}px`, height: `${size}px` }"
       role="status"
-      :aria-label="label || 'Dang tai'"
+      :aria-label="label || 'Đang tải'"
     />
     <span v-if="label" class="text-soft text-sm">{{ label }}</span>
   </span>
@@ -46,7 +46,7 @@ withDefaults(defineProps<{ size?: number; label?: string; inline?: boolean }>(),
   }
 }
 
-/* Ton trong nguoi dung da tat hieu ung chuyen dong trong he dieu hanh. */
+/* Tôn trọng người dùng đã tắt hiệu ứng chuyển động trong hệ điều hành. */
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation-duration: 2s;

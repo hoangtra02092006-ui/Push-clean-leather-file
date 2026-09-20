@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Cong tac bat/tat. Dung the <button role="switch"> de bo doc man hinh hieu dung. */
+/** Công tắc bật/tắt. Dùng thẻ <button role="switch"> để bộ đọc màn hình hiểu đúng. */
 import { useId } from '@/composables/useId'
 
 defineProps<{ label?: string; hint?: string; disabled?: boolean }>()

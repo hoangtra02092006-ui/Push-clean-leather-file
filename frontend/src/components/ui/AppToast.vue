@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Hang toast o goc tren phai. Dat mot lan trong AppShell, dung cho ca app. */
+/** Hàng toast ở góc trên phải. Đặt một lần trong AppShell, dùng cho cả app. */
 import { useUiStore } from '@/stores/ui'
 
 const ui = useUiStore()
@@ -10,7 +10,7 @@ const ui = useUiStore()
     <TransitionGroup name="toast">
       <div v-for="toast in ui.toasts" :key="toast.id" :class="['toast', `toast--${toast.kind}`]">
         <span class="toast__text">{{ toast.message }}</span>
-        <button type="button" class="toast__close" aria-label="Dong" @click="ui.dismiss(toast.id)">
+        <button type="button" class="toast__close" aria-label="Đóng" @click="ui.dismiss(toast.id)">
           &times;
         </button>
       </div>
