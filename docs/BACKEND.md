@@ -237,6 +237,12 @@ Mỗi test đều chạy lại toàn bộ bộ kiểm tra bất biến:
 - Hình có `allowRotate=false` giữ nguyên hướng.
 - Cùng đầu vào cho cùng đầu ra.
 
+### `FillRateTest` — tỷ lệ lấp đầy
+
+Một tờ giấy không thể bị phủ hơn 100% chính nó. Vậy mà màn kết quả từng hiện **"lấp đầy 100,3%"** và **"giấy bỏ đi −0,3%"**: tỷ lệ lấy bằng **tổng** diện tích các khung bao, trong khi ở chế độ nhét hình nhỏ vào chỗ trống thì khung bao được phép lồng nhau — đó chính là mục đích của chế độ đó — nên phần giấy chung bị đếm hai lần.
+
+Nay tính bằng **hợp** của các khung bao ([`Coverage.java`](../backend/src/main/java/vn/printnest/nesting/model/Coverage.java)), nén toạ độ nên **chính xác** chứ không phải xấp xỉ theo lưới. Chế độ xếp lưới không có chỗ nào chồng nhau nên hợp = tổng, mọi số liệu nghiệm thu cũ giữ nguyên không xê dịch — có hẳn một test chốt điều đó.
+
 ### `MaxSheetLengthTest` — giới hạn chiều dài mỗi file
 
 Bất biến "không tấm nào dài quá `maxSheetLength`" ở trên **từng bị vi phạm âm thầm** ở chế độ xếp lồng: tấm dài hơn giới hạn đúng bằng một `gap` cộng 2 mm, nên đặt 200 cm với khoảng cách 5 cm thì ra tấm 205,2 cm. Bộ test cũ không bắt được vì nó chỉ chạy vài cấu hình cố định với `gap` nhỏ.

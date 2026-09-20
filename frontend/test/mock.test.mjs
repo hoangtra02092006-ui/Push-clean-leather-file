@@ -94,6 +94,20 @@ const pieces = byType.reduce((sum, row) => sum + row.pieces, 0)
 check('tong so ban khop bang tong hop', pieces === stats.totalPieces, `${pieces} / ${stats.totalPieces}`)
 check('tong so ban dung bang so luong yeu cau', pieces === 45, String(pieces))
 
+// Mot to giay khong the bi phu hon 100% chinh no. Backend tung tra ve 100,3% vi cong
+// TONG cac khung bao thay vi lay HOP - mock chi xep luoi nen khong dinh, nhung chot lai
+// o day de neu sau nay mock ho tro xep long thi co cai bat ngay.
+check('ty le lap day chung khong vuot 100%', stats.fillRate <= 1, `${(stats.fillRate * 100).toFixed(1)}%`)
+check(
+  'khong tam nao lap day vuot 100%',
+  job.result.sheets.every((sheet) => sheet.fillRate <= 1),
+  job.result.sheets.map((s) => `${(s.fillRate * 100).toFixed(1)}%`).join(' '),
+)
+check(
+  'khong dong nao trong bang lap day vuot 100%',
+  byType.every((row) => row.fillRate <= 1),
+)
+
 const shareSum = byType.reduce((sum, row) => sum + row.shareOfShapes, 0)
 check('cong trong so cac loai lai bang 1', near(shareSum, 1), shareSum.toFixed(4))
 

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 import vn.printnest.common.ApiException;
 import vn.printnest.common.ErrorCode;
 import vn.printnest.common.Units;
+import vn.printnest.nesting.model.Coverage;
 import vn.printnest.nesting.model.NestResult;
 import vn.printnest.nesting.model.NestStats;
 import vn.printnest.nesting.model.Placement;
@@ -654,6 +655,7 @@ public class NestingEngine {
     private NestResult toResult(List<PackResult> packed, EngineInput input, int totalPieces,
                                 int marginCmm, int gapCmm, int sheetWidthCmm) {
         List<Sheet> sheets = new ArrayList<>();
+        List<Coverage> coverages = new ArrayList<>();
         double totalLengthMm = 0;
         int placedCount = 0;
 
@@ -699,8 +701,13 @@ public class NestingEngine {
                 shapeAreaOnSheet += Units.cmmToMm(realW) * Units.cmmToMm(realH);
             }
 
+            // Lap day do bang dien tich giay THAT SU bi phu, moi cho dem mot lan. Lay tong
+            // khung bao thi o che do nhet hinh nho vao cho trong se dem hai lan phan long
+            // nhau, ra ty le tren 100%.
+            Coverage sheetCoverage = Coverage.of(placements);
+            coverages.add(sheetCoverage);
             double sheetArea = sheetWidthMm * sheetLengthMm;
-            double fillRate = sheetArea > 0 ? shapeAreaOnSheet / sheetArea : 0;
+            double fillRate = sheetArea > 0 ? sheetCoverage.totalAreaMm2() / sheetArea : 0;
             sheets.add(new Sheet(i, sheetWidthMm, sheetLengthMm, round4(fillRate), placements));
 
             totalLengthMm += sheetLengthMm;
@@ -720,7 +727,8 @@ public class NestingEngine {
         }
         double sheetWidthMm = Units.round2(Units.cmmToMm(sheetWidthCmm));
         double usedArea = sheetWidthMm * totalLengthMm;
-        double fillRate = usedArea > 0 ? totalShapeArea / usedArea : 0;
+        Coverage coverage = Coverage.merge(coverages);
+        double fillRate = usedArea > 0 ? coverage.totalAreaMm2() / usedArea : 0;
 
         NestStats stats = new NestStats(
                 sheets.size(),
@@ -730,7 +738,7 @@ public class NestingEngine {
                 round4(fillRate),
                 round4(savedVsIndividualPct(sheets, totalLengthMm, input)),
                 placedCount,
-                TypeStats.from(sheets, usedArea));
+                TypeStats.from(sheets, coverage, usedArea));
 
         return new NestResult(sheets, stats);
     }

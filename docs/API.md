@@ -262,6 +262,8 @@ Một dòng cho mỗi loại hình đã tải lên, **sắp theo `categoryIndex`
 
 Hai tỷ lệ này nhìn cùng một thứ từ hai phía và **không thay thế cho nhau**: `shareOfShapes` trả lời "trong số hình đem in, mẫu này chiếm bao nhiêu"; `fillRate` trả lời "mẫu này ngốn bao nhiêu phần giấy".
 
+> **Mọi `fillRate` đều đếm mỗi chỗ trên giấy đúng MỘT lần.** Ở chế độ `FREE` và `TRUE_SHAPE`, khung bao của hai hình được phép lồng vào nhau, nên cộng tổng khung bao sẽ ra tỷ lệ vượt 100%. Chỗ nào hai khung bao cùng trùm thì tính cho hình đứng trước trong danh sách — nói cách khác `fillRate` của một mẫu là **phần giấy nó chiếm chỗ riêng**, còn hình nhỏ chui gọn vào góc trống của hình lớn thì không tốn thêm giấy nào nên không được tính.
+
 > **Lưu ý về `fillRate` ở chế độ `FREE`.** Tỷ lệ lấp đầy được tính trên diện tích **khung bao**. Ở chế độ `FREE` các khung bao được phép lồng nhau, nên phần lồng bị đếm hai lần và `fillRate` cao hơn thực tế. Con số đáng tin để so sánh hai chế độ là **`totalLengthMm`** — đó cũng là thứ xưởng trả tiền.
 
 **Lỗi:** `JOB_NOT_FOUND`.

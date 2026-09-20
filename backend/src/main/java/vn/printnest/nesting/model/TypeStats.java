@@ -21,7 +21,8 @@ import java.util.Map;
  *       tat ca cac loai lai dung bang 1.</li>
  *   <li>{@code fillRate} - loai nay chiem bao nhieu phan DIEN TICH GIAY da dung. Cong
  *       tat ca cac loai lai dung bang ty le lap day chung cua ca lan ghep, phan con
- *       thieu chinh la giay bo di.</li>
+ *       thieu chinh la giay bo di. Cho nao hai khung bao long vao nhau thi tinh cho hinh
+ *       dung truoc - xem {@link Coverage#areaOf(int)}.</li>
  * </ul>
  *
  * @param fileId         ma file nguon
@@ -56,9 +57,10 @@ public record TypeStats(
      * phai TAT DINH: cung dau vao thi cung dau ra, ke ca thu tu dong trong bang.
      *
      * @param sheets       cac tam da dan khuon
+     * @param coverage     dien tich giay tung loai chiem cho RIENG, da dem moi cho mot lan
      * @param usedAreaMm2  tong dien tich giay da dung
      */
-    public static List<TypeStats> from(List<Sheet> sheets, double usedAreaMm2) {
+    public static List<TypeStats> from(List<Sheet> sheets, Coverage coverage, double usedAreaMm2) {
         Map<Integer, Accumulator> byCategory = new LinkedHashMap<>();
         double totalShapeArea = 0;
 
@@ -85,7 +87,10 @@ public record TypeStats(
                     Units.round2(acc.heightMm),
                     Units.round2(acc.areaMm2),
                     totalShapeArea > 0 ? round4(acc.areaMm2 / totalShapeArea) : 0,
-                    usedAreaMm2 > 0 ? round4(acc.areaMm2 / usedAreaMm2) : 0));
+                    // Lap day dung dien tich CHIEM CHO RIENG chu khong phai tong khung bao:
+                    // hai khung bao long vao nhau thi phan chung chi duoc tinh mot lan, neu
+                    // khong cong cac dong lai se vuot qua 100%.
+                    usedAreaMm2 > 0 ? round4(coverage.areaOf(acc.categoryIndex) / usedAreaMm2) : 0));
         }
         stats.sort(Comparator.comparingInt(TypeStats::categoryIndex));
         return List.copyOf(stats);

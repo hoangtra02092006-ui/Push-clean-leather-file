@@ -3,6 +3,7 @@ package vn.printnest.nesting.engine;
 import vn.printnest.common.ApiException;
 import vn.printnest.common.ErrorCode;
 import vn.printnest.common.Units;
+import vn.printnest.nesting.model.Coverage;
 import vn.printnest.nesting.model.NestResult;
 import vn.printnest.nesting.model.NestStats;
 import vn.printnest.nesting.model.Placement;
@@ -197,35 +198,42 @@ final class TrueShapeRunner {
             shapeArea += widthMm * heightMm;
         }
 
+        // Dien tich giay THAT SU bi phu, moi cho dem mot lan. Hai hinh xep long vao nhau
+        // co khung bao chong nhau, cong tong khung bao lai se ra ty le tren 100%.
+        double coveredMm2 = Coverage.of(placements).totalAreaMm2();
         double sheetArea = sheetWidthMm * lengthMm;
         return new Sheet(index, sheetWidthMm, Units.round2(lengthMm),
-                sheetArea > 0 ? round4(shapeArea / sheetArea) : 0, placements);
+                sheetArea > 0 ? round4(coveredMm2 / sheetArea) : 0, placements);
     }
 
     private static NestResult summarise(List<Sheet> sheets, EngineInput input,
                                         double totalLengthMm, int sheetWidthCmm, int placedCount) {
         double shapeArea = 0;
         double individualLength = 2 * input.marginMm();
+        List<Coverage> coverages = new ArrayList<>(sheets.size());
         for (Sheet sheet : sheets) {
             for (Placement p : sheet.placements()) {
                 shapeArea += p.wMm() * p.hMm();
                 individualLength += p.hMm() + input.gapMm();
             }
+            coverages.add(Coverage.of(sheet.placements()));
         }
         double sheetWidthMm = Units.round2(Units.cmmToMm(sheetWidthCmm));
         double usedArea = sheetWidthMm * totalLengthMm;
+        // Dem moi cho mot lan: khung bao cua hai hinh long nhau van la mot phan giay.
+        Coverage coverage = Coverage.merge(coverages);
 
         NestStats stats = new NestStats(
                 sheets.size(),
                 Units.round2(totalLengthMm),
                 Units.round2(shapeArea),
                 Units.round2(usedArea),
-                usedArea > 0 ? round4(shapeArea / usedArea) : 0,
+                usedArea > 0 ? round4(coverage.totalAreaMm2() / usedArea) : 0,
                 individualLength > 0
                         ? round4(Math.max(0, (individualLength - totalLengthMm) / individualLength * 100))
                         : 0,
                 placedCount,
-                TypeStats.from(sheets, usedArea));
+                TypeStats.from(sheets, coverage, usedArea));
 
         return new NestResult(sheets, stats);
     }
