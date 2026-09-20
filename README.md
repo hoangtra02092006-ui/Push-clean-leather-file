@@ -61,6 +61,8 @@ printnest/
 ├─ README.md                  ← bạn đang đọc file này
 ├─ .gitignore
 ├─ docs/                      ← tài liệu chi tiết, xem mục 7
+├─ samples/                   ← file in mẫu + kết quả kỳ vọng để kiểm thử
+├─ .claude/skills/            ← skill /add /fix /adjust cho Claude Code
 ├─ backend/                   ← Java 17+ / Spring Boot 3.3 / PDFBox 3
 │  ├─ pom.xml
 │  ├─ Dockerfile              ← multi-stage, JRE 21 slim
@@ -192,10 +194,25 @@ npm run build
 | [docs/API.md](docs/API.md) | Đặc tả đầy đủ từng endpoint kèm JSON mẫu và bảng mã lỗi |
 | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) | Bảng token, thang chữ, thang khoảng cách, danh sách component và props |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Các bước deploy frontend lên Netlify và backend lên Render/Railway |
+| [docs/AGENT-GUIDE.md](docs/AGENT-GUIDE.md) | **Hợp đồng cho agent khi sửa hệ thống** — bản đồ file, bất biến, bẫy đã gặp, lệnh kiểm chứng. Nền của 3 skill `/add` `/fix` `/adjust` |
 
 ---
 
-## 8. Giới hạn hiện tại
+## 8. Sửa hệ thống bằng skill
+
+Repo có sẵn 3 skill cho Claude Code, gõ thẳng trong phiên làm việc:
+
+| Lệnh | Dùng khi | Ví dụ |
+|---|---|---|
+| `/add` | Thêm chức năng chưa có | `/add cho phép xuất thêm file SVG` |
+| `/fix` | Sửa cái đang sai | `/fix preview vẽ lệch khi tấm dài hơn 3m` |
+| `/adjust` | Đổi hành vi cái đang đúng | `/adjust để gap mặc định là 0.5cm` |
+
+Cả ba đều nạp [docs/AGENT-GUIDE.md](docs/AGENT-GUIDE.md) trước khi động vào code, nên agent luôn biết: sửa file nào, bất biến nào không được phá, và phải chạy lệnh gì để chứng minh là đã xong.
+
+---
+
+## 9. Giới hạn hiện tại
 
 - **Chỉ xếp hình chữ nhật.** Hình bất quy tắc được coi là hình chữ nhật bao quanh nó. True-shape nesting (NFP) là hướng mở rộng, xem [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#7-điểm-mở-rộng-tương-lai).
 - **Chưa kéo thả chỉnh tay** vị trí từng hình sau khi máy xếp.
