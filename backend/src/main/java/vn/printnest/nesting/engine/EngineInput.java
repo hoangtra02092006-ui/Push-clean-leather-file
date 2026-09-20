@@ -19,6 +19,14 @@ public record EngineInput(
         double gapMm,
         Double maxSheetLengthMm,
         boolean allowRotateGlobal,
-        List<EngineItem> items
+        List<EngineItem> items,
+        boolean trueShape
 ) {
+
+    /** Ban rut gon: xep theo khung chu nhat nhu truoc. */
+    public EngineInput(double sheetWidthMm, double marginMm, double gapMm,
+                       Double maxSheetLengthMm, boolean allowRotateGlobal,
+                       List<EngineItem> items) {
+        this(sheetWidthMm, marginMm, gapMm, maxSheetLengthMm, allowRotateGlobal, items, false);
+    }
 }

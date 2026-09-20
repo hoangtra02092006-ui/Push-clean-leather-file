@@ -22,6 +22,10 @@ app:
     # container khoi dong lai; khong co volume thi file chi ton tai trong mot phien.
     path: ${APP_STORAGE_PATH:./storage}
     max-file-size: ${APP_MAX_FILE_SIZE:52428800}
+  trim:
+    # Doc content stream cua PDF de lay dung vung co net ve, bo khoang trang bao quanh.
+    # Tat di neu gap file la khien viec cat cho ket qua sai.
+    enabled: ${APP_TRIM_ENABLED:true}
   cors:
     # Origin cua frontend. Tren Netlify nho them dung ten mien da cap.
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}

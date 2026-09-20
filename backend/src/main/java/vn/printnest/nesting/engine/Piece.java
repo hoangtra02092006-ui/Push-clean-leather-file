@@ -19,6 +19,9 @@ package vn.printnest.nesting.engine;
  * @param typeIndex     thu tu dong trong danh sach yeu cau, dung khi thu cac phuong an
  *                      co dinh huong theo tung loai hinh
  * @param prerotated    hinh da bi hoan doi w/h truoc khi xep (phuong an ep huong)
+ * @param shape         hinh dang that; chi dung o che do xep long, null la coi nhu dac
+ * @param cavities      cac o trong ben trong khung bao hinh nay, toa do theo goc
+ *                      trai-duoi cua khung bao; rong neu hinh dac
  */
 public record Piece(
         int id,
@@ -31,16 +34,38 @@ public record Piece(
         boolean allowRotate,
         int categoryIndex,
         int typeIndex,
-        boolean prerotated
+        boolean prerotated,
+        java.util.List<Cavity> cavities,
+        ShapeMask shape
 ) {
     /** Ban sao da xoay 90 do, dung cho cac phuong an ep huong toan loai hinh. */
     public Piece rotated90() {
+        // Xoay theo chieu cao THAT chu khong phai chieu cao da no gap: hoc lom duoc dinh
+        // nghia trong he toa do cua net ve, va PdfComposer cung xoay quanh o that.
+        java.util.List<Cavity> turned = cavities.stream()
+                .map(c -> c.rotated90(realH))
+                .toList();
         return new Piece(id, fileId, label, h, w, realH, realW,
-                allowRotate, categoryIndex, typeIndex, !prerotated);
+                allowRotate, categoryIndex, typeIndex, !prerotated, turned, shape);
     }
 
     public long area() {
         return (long) w * h;
+    }
+
+    /**
+     * Dien tich THUC SU choan cho: dien tich khung bao tru cac o trong ben trong.
+     *
+     * <p>Dung cho can duoi cua buoc tim nhi phan. Neu van lay ca dien tich khung bao, can
+     * duoi se cao hon chieu dai toi uu that, va vong tim nhi phan khong bao gio thu toi
+     * phuong an ngan hon - tu tay chan mat cai loi ma hoc lom vua mang lai.
+     */
+    public long netArea() {
+        long used = area();
+        for (Cavity cavity : cavities) {
+            used -= (long) cavity.w() * cavity.h();
+        }
+        return Math.max(0, used);
     }
 
     public int longSide() {

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import vn.printnest.common.ApiException;
 import vn.printnest.common.ErrorCode;
 import vn.printnest.common.Units;
+import vn.printnest.file.ContentBox;
 import vn.printnest.file.FileService;
 import vn.printnest.file.FileType;
 import vn.printnest.file.StoredFile;
@@ -112,7 +113,6 @@ public class PdfComposer {
                          StoredFile source, Placement placement) throws IOException {
 
         PDFormXObject form = formCache.get(source.id());
-        PDRectangle box;
         if (form == null) {
             PDDocument document = sourceCache.computeIfAbsent(source.id(), key -> {
                 try {
@@ -124,12 +124,30 @@ public class PdfComposer {
             form = layerUtility.importPageAsForm(document, 0);
             formCache.put(source.id(), form);
         }
-        box = form.getBBox();
 
-        double targetWidthMm = placement.rotated() ? placement.hMm() : placement.wMm();
-        double targetHeightMm = placement.rotated() ? placement.wMm() : placement.hMm();
-        float scaleX = box.getWidth() == 0 ? 1f : Units.mmToPt(targetWidthMm) / box.getWidth();
-        float scaleY = box.getHeight() == 0 ? 1f : Units.mmToPt(targetHeightMm) / box.getHeight();
+        // Lay DUNG cai hop ma luc doc metadata da dung, chu khong phai form.getBBox().
+        // form.getBBox() luon la CropBox; neu kich thuoc bao ra ngoai lai lay tu TrimBox
+        // hoac tu vung net ve da cat, hai ben lech nhau va hinh se bi co lai hoac bi
+        // lech di dung bang phan chenh.
+        ContentBox box = source.contentBox();
+        if (box == null) {
+            PDRectangle bbox = form.getBBox();
+            box = new ContentBox(bbox.getLowerLeftX(), bbox.getLowerLeftY(),
+                    bbox.getWidth(), bbox.getHeight());
+        }
+
+        // Trang co the mang co xoay; kich thuoc nhin thay khi do bi hoan doi.
+        int rotation = ((source.pageRotation() % 360) + 360) % 360;
+        boolean pageSwapped = rotation == 90 || rotation == 270;
+        double displayWidthPt = pageSwapped ? box.heightPt() : box.widthPt();
+        double displayHeightPt = pageSwapped ? box.widthPt() : box.heightPt();
+
+        // Kich thuoc dich phai lay ban CHUA XOAY. Lay ban da xoay roi chia cho khung chua
+        // xoay se ra ty le sai va lam meo hinh - loi chi lo ra o cac goc cheo.
+        double targetWidthMm = placement.sourceWMm();
+        double targetHeightMm = placement.sourceHMm();
+        double scaleX = displayWidthPt == 0 ? 1 : Units.mmToPt(targetWidthMm) / displayWidthPt;
+        double scaleY = displayHeightPt == 0 ? 1 : Units.mmToPt(targetHeightMm) / displayHeightPt;
 
         AffineTransform transform = new AffineTransform();
         transform.translate(Units.mmToPt(placement.xMm()), Units.mmToPt(placement.yMm()));
@@ -140,12 +158,75 @@ public class PdfComposer {
             transform.rotate(Math.PI / 2);
         }
         transform.scale(scaleX, scaleY);
-        transform.translate(-box.getLowerLeftX(), -box.getLowerLeftY());
+        applyFreeAngle(transform, placement.angleDeg(),
+                Units.mmToPt(targetWidthMm), Units.mmToPt(targetHeightMm));
+        applyPageRotation(transform, rotation, box);
+        // Dua goc trai-duoi cua vung net ve ve goc toa do. Day chinh la buoc bu lai
+        // phan khoang trang da cat: khong co no, hinh se lech vao trong dung bang le.
+        transform.translate(-box.xPt(), -box.yPt());
 
         content.saveGraphicsState();
         content.transform(new org.apache.pdfbox.util.Matrix(transform));
         content.drawForm(form);
         content.restoreGraphicsState();
+    }
+
+    /**
+     * Xoay hinh mot goc bat ky, dung cho che do xep long theo hinh that.
+     *
+     * <p>Xoay quanh goc toa do roi day ca hinh ve goc phan tu duong: sau phep nay, hop bao
+     * cua hinh DA XOAY co goc trai-duoi nam dung tai (0,0), khop chinh xac voi o ma thuat
+     * toan da danh cho no.
+     *
+     * <p>Khong co phep keo gian nao o day. Kich thuoc dich ma engine bao ra cung duoc tinh
+     * bang luong giac tu chinh goc nay, nen ty le phong o buoc scale luon bang 1 - dung
+     * bat bien "tuyet doi khong tu co gian hinh".
+     */
+    private void applyFreeAngle(AffineTransform transform, double angleDeg,
+                                double widthPt, double heightPt) {
+        if (angleDeg == 0) {
+            return;
+        }
+        double radians = Math.toRadians(angleDeg);
+        double cos = Math.cos(radians);
+        double sin = Math.sin(radians);
+
+        // Bon goc cua khung sau khi xoay; lay goc trai-duoi nhat de day ve 0.
+        double[] xs = {0, widthPt * cos, -heightPt * sin, widthPt * cos - heightPt * sin};
+        double[] ys = {0, widthPt * sin, heightPt * cos, widthPt * sin + heightPt * cos};
+        double minX = Math.min(Math.min(xs[0], xs[1]), Math.min(xs[2], xs[3]));
+        double minY = Math.min(Math.min(ys[0], ys[1]), Math.min(ys[2], ys[3]));
+
+        transform.translate(-minX, -minY);
+        transform.rotate(radians);
+    }
+
+    /**
+     * Bu lai co /Rotate cua trang nguon.
+     *
+     * <p>Trinh xem PDF tu xoay trang theo co nay khi hien thi, nhung noi dung ben trong
+     * van nam o he toa do goc. Nhung vao mot trang khac thi co do khong con tac dung, nen
+     * phai tu xoay bang phep bien doi - neu khong, trang xoay 90 do se bi dat nam ngang
+     * va keo meo cho vua o.
+     */
+    private void applyPageRotation(AffineTransform transform, int rotation, ContentBox box) {
+        switch (rotation) {
+            case 90 -> {
+                transform.translate(0, box.widthPt());
+                transform.rotate(-Math.PI / 2);
+            }
+            case 180 -> {
+                transform.translate(box.widthPt(), box.heightPt());
+                transform.rotate(Math.PI);
+            }
+            case 270 -> {
+                transform.translate(box.heightPt(), 0);
+                transform.rotate(Math.PI / 2);
+            }
+            default -> {
+                // 0 do: khong can lam gi.
+            }
+        }
     }
 
     /** Nhung mot file anh, keo dung kich thuoc vat ly da tinh. */

@@ -4,8 +4,11 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import vn.printnest.common.ApiException;
+import vn.printnest.common.AppProperties;
 import vn.printnest.common.ErrorCode;
 import vn.printnest.common.Units;
 
@@ -13,8 +16,7 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.stream.ImageInputStream;
-import java.awt.image.BufferedImage;
-import java.io.File;
+import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Iterator;
@@ -27,9 +29,9 @@ import org.w3c.dom.NodeList;
  * <p>Day la buoc de sai nhat cua ca luong: mot file "to" tren man hinh chua chac to khi
  * in. Quy tac:
  * <ul>
- *   <li><b>PDF</b>: lay hop theo thu tu uu tien TrimBox &rarr; CropBox &rarr; MediaBox.
- *       TrimBox moi la kich thuoc thanh pham sau khi xen; MediaBox thuong con ca vung
- *       tran le nen dung no se ra hinh to hon thuc te.</li>
+ *   <li><b>PDF</b>: doc content stream de tim vung CO NET VE THAT SU, bo qua khoang trang
+ *       bao quanh (xem {@link PdfContentBoxFinder}). Khong tim duoc thi lui ve hop trang
+ *       theo thu tu uu tien TrimBox &rarr; CropBox &rarr; MediaBox.</li>
  *   <li><b>Anh</b>: doi pixel sang milimet theo DPI ghi trong metadata. Khong co DPI thi
  *       coi la 72 DPI - quy uoc cua Illustrator/Photoshop khi xuat web.</li>
  * </ul>
@@ -37,20 +39,37 @@ import org.w3c.dom.NodeList;
 @Component
 public class FileMetadataReader {
 
+    private static final Logger log = LoggerFactory.getLogger(FileMetadataReader.class);
+
     /** DPI mac dinh khi anh khong khai bao do phan giai. */
     private static final double DEFAULT_DPI = 72d;
 
     private static final double MM_PER_INCH = 25.4d;
 
     /**
+     * Canh nho nhat con duoc coi la ket qua cat hop le, tinh bang milimet.
+     *
+     * <p>Hop bao be hon nguong nay gan nhu chac chan la doc nham (file dung cau truc la,
+     * hoac chi co mot dau cham vo tinh); luc do thà lay ca kho trang con hon cat mat hinh.
+     */
+    private static final double MIN_TRIMMED_MM = 1.0;
+
+    private final AppProperties properties;
+
+    public FileMetadataReader(AppProperties properties) {
+        this.properties = properties;
+    }
+
+    /**
      * Doc kich thuoc vat ly cua file.
      *
-     * @param path duong dan file tren dia
-     * @param type loai file
-     * @return mang {@code [widthMm, heightMm, pageCount]}
+     * @param path         duong dan file tren dia
+     * @param type         loai file
+     * @param originalName ten goc, chi dung de bao loi cho de hieu
+     * @return kich thuoc da doc duoc
      * @throws ApiException khi khong doc duoc kich thuoc
      */
-    public Dimensions read(Path path, FileType type, String originalName) {
+    public Metadata read(Path path, FileType type, String originalName) {
         try {
             return type == FileType.PDF ? readPdf(path) : readImage(path);
         } catch (ApiException ex) {
@@ -62,29 +81,114 @@ public class FileMetadataReader {
         }
     }
 
-    /** Kich thuoc vat ly doc duoc. */
-    public record Dimensions(double widthMm, double heightMm, int pageCount) {
+    /**
+     * Ket qua doc duoc tu mot file nguon.
+     *
+     * @param widthMm        chieu rong dung de xep (da cat khoang trang)
+     * @param heightMm       chieu cao dung de xep
+     * @param sourceWidthMm  chieu rong kho trang nguyen ban
+     * @param sourceHeightMm chieu cao kho trang nguyen ban
+     * @param contentBox     vung co net ve, he toa do goc cua file; null neu khong cat
+     * @param occupancy      ban do chiem cho ben trong khung bao; null voi anh
+     * @param pageRotation   goc xoay khai bao o trang PDF
+     * @param pageCount      so trang
+     */
+    public record Metadata(
+            double widthMm,
+            double heightMm,
+            double sourceWidthMm,
+            double sourceHeightMm,
+            ContentBox contentBox,
+            OccupancyMask occupancy,
+            int pageRotation,
+            int pageCount
+    ) {
     }
 
-    private Dimensions readPdf(Path path) throws IOException {
+    private Metadata readPdf(Path path) throws IOException {
         try (PDDocument document = Loader.loadPDF(path.toFile())) {
             if (document.getNumberOfPages() == 0) {
                 throw new ApiException(ErrorCode.SIZE_UNREADABLE, "File PDF khong co trang nao.");
             }
             PDPage page = document.getPage(0);
-            PDRectangle box = effectiveBox(page);
-
-            // Trang co the duoc danh dau xoay 90/270 do; kich thuoc hien thi bi hoan doi.
+            PDRectangle pageBox = effectiveBox(page);
             int rotation = ((page.getRotation() % 360) + 360) % 360;
             boolean swapped = rotation == 90 || rotation == 270;
-            double widthPt = swapped ? box.getHeight() : box.getWidth();
-            double heightPt = swapped ? box.getWidth() : box.getHeight();
 
-            return new Dimensions(
-                    Units.round2(Units.ptToMm(widthPt)),
-                    Units.round2(Units.ptToMm(heightPt)),
+            ContentBox box = new ContentBox(pageBox.getLowerLeftX(), pageBox.getLowerLeftY(),
+                    pageBox.getWidth(), pageBox.getHeight());
+            OccupancyMask occupancy = null;
+
+            if (properties.trim().enabled()) {
+                PdfContentBoxFinder finder = runFinder(page);
+                ContentBox trimmed = finder == null ? null : findContentBox(finder, pageBox);
+                if (trimmed != null) {
+                    box = trimmed;
+                    // Ban do chiem cho chi co y nghia khi biet chac khung bao; dung lai
+                    // ket qua cua CUNG mot lan duyet content stream, khong duyet hai lan.
+                    occupancy = OccupancyMask.build(finder.shapes(), box,
+                            OccupancyMask.DEFAULT_CELL_MM);
+                }
+            }
+
+            double widthMm = Units.ptToMm(box.widthPt());
+            double heightMm = Units.ptToMm(box.heightPt());
+            double sourceWidthMm = Units.ptToMm(pageBox.getWidth());
+            double sourceHeightMm = Units.ptToMm(pageBox.getHeight());
+
+            return new Metadata(
+                    Units.round2(swapped ? heightMm : widthMm),
+                    Units.round2(swapped ? widthMm : heightMm),
+                    Units.round2(swapped ? sourceHeightMm : sourceWidthMm),
+                    Units.round2(swapped ? sourceWidthMm : sourceHeightMm),
+                    box,
+                    occupancy,
+                    rotation,
                     document.getNumberOfPages());
         }
+    }
+
+    /**
+     * Tim hop bao net ve, da kiem tra tinh hop ly.
+     *
+     * @return hop bao da cat, hoac null neu nen giu nguyen ca kho trang
+     */
+    private PdfContentBoxFinder runFinder(PDPage page) {
+        try {
+            PdfContentBoxFinder finder = new PdfContentBoxFinder(page);
+            finder.find();
+            return finder;
+        } catch (IOException | RuntimeException ex) {
+            // File la, phong hong, content stream khong doc duoc... Khong sao: lui ve
+            // dung ca kho trang, van in duoc, chi la ton giay hon.
+            log.warn("Khong doc duoc vung net ve, dung ca kho trang: {}", ex.toString());
+            return null;
+        }
+    }
+
+    private ContentBox findContentBox(PdfContentBoxFinder finder, PDRectangle pageBox) {
+        Rectangle2D ink = finder.bounds();
+        if (ink == null) {
+            return null;
+        }
+
+        // Net ve co the tran ra ngoai kho trang; phan tran ra do se bi xen khi in nen
+        // khong duoc tinh vao kich thuoc.
+        Rectangle2D clipped = ink.createIntersection(new Rectangle2D.Double(
+                pageBox.getLowerLeftX(), pageBox.getLowerLeftY(),
+                pageBox.getWidth(), pageBox.getHeight()));
+
+        if (clipped.getWidth() <= 0 || clipped.getHeight() <= 0) {
+            return null;
+        }
+        if (Units.ptToMm(clipped.getWidth()) < MIN_TRIMMED_MM
+                || Units.ptToMm(clipped.getHeight()) < MIN_TRIMMED_MM) {
+            log.warn("Vung net ve nho bat thuong ({} x {} pt), dung ca kho trang de an toan",
+                    Math.round(clipped.getWidth()), Math.round(clipped.getHeight()));
+            return null;
+        }
+
+        return new ContentBox(clipped.getX(), clipped.getY(), clipped.getWidth(), clipped.getHeight());
     }
 
     /** TrimBox truoc, roi CropBox, cuoi cung MediaBox. */
@@ -104,7 +208,15 @@ public class FileMetadataReader {
         return box != null && box.getWidth() > 0 && box.getHeight() > 0;
     }
 
-    private Dimensions readImage(Path path) throws IOException {
+    /**
+     * Doc kich thuoc anh.
+     *
+     * <p>Anh KHONG duoc cat khoang trang: khac voi PDF, anh khong co "net ve" de doc, chi
+     * co mau pixel. Ma nen trang cua mot file anh rat co the la phan co y de chua - vien
+     * trang cua decal chang han. Cat di la hong ban in, nen o day giu nguyen; nguoi dung
+     * muon cat thi sua tay o cot kich thuoc trong bang.
+     */
+    private Metadata readImage(Path path) throws IOException {
         try (ImageInputStream stream = ImageIO.createImageInputStream(path.toFile())) {
             if (stream == null) {
                 throw new ApiException(ErrorCode.SIZE_UNREADABLE, "Khong mo duoc file anh.");
@@ -120,10 +232,9 @@ public class FileMetadataReader {
                 int heightPx = reader.getHeight(0);
                 double[] dpi = readDpi(reader);
 
-                return new Dimensions(
-                        Units.round2(widthPx / dpi[0] * MM_PER_INCH),
-                        Units.round2(heightPx / dpi[1] * MM_PER_INCH),
-                        1);
+                double widthMm = Units.round2(widthPx / dpi[0] * MM_PER_INCH);
+                double heightMm = Units.round2(heightPx / dpi[1] * MM_PER_INCH);
+                return new Metadata(widthMm, heightMm, widthMm, heightMm, null, null, 0, 1);
             } finally {
                 reader.dispose();
             }
@@ -171,10 +282,5 @@ public class FileMetadataReader {
         } catch (NumberFormatException ex) {
             return -1;
         }
-    }
-
-    /** Doc anh de tao file xem truoc. */
-    public BufferedImage loadImage(File file) throws IOException {
-        return ImageIO.read(file);
     }
 }

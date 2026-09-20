@@ -13,7 +13,12 @@ package vn.printnest.nesting.engine;
  * @param heightMm      chieu cao that
  * @param quantity      so ban can in
  * @param allowRotate   co duoc xoay 90 do khong
+ * @param shape         hinh dang that duoi dang mat na luoi; null nghia la coi nhu
+ *                      khung bao dac hoan toan
  * @param categoryIndex thu tu loai hinh, dung de to mau preview
+ * @param cavities      cac o trong ben trong khung bao, don vi MILIMET, toa do theo goc
+ *                      trai-duoi cua khung bao. Moi diem trong o da cach net ve it nhat
+ *                      mot gap, nen hinh khac dat lot vao do la an toan.
  */
 public record EngineItem(
         String fileId,
@@ -22,6 +27,27 @@ public record EngineItem(
         double heightMm,
         int quantity,
         boolean allowRotate,
-        int categoryIndex
+        int categoryIndex,
+        java.util.List<CavityMm> cavities,
+        ShapeMask shape
 ) {
+
+    /** Mot o trong, don vi milimet. */
+    public record CavityMm(double xMm, double yMm, double widthMm, double heightMm) {
+    }
+
+    /** Ban rut gon cho cac cho goi khong quan tam toi hoc lom (test, hinh dac). */
+    public EngineItem(String fileId, String label, double widthMm, double heightMm,
+                      int quantity, boolean allowRotate, int categoryIndex) {
+        this(fileId, label, widthMm, heightMm, quantity, allowRotate, categoryIndex,
+                java.util.List.of(), null);
+    }
+
+    /** Ban chi khai hoc lom, chua can hinh dang that. */
+    public EngineItem(String fileId, String label, double widthMm, double heightMm,
+                      int quantity, boolean allowRotate, int categoryIndex,
+                      java.util.List<CavityMm> cavities) {
+        this(fileId, label, widthMm, heightMm, quantity, allowRotate, categoryIndex,
+                cavities, null);
+    }
 }

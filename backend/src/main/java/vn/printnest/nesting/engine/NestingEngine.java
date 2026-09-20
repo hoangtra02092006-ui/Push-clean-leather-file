@@ -127,6 +127,11 @@ public class NestingEngine {
             }
         }
 
+        if (input.trueShape()) {
+            return TrueShapeRunner.run(input, pieces, marginCmm, gapCmm, sheetWidthCmm,
+                    usableWidth - gapCmm, maxSheetLengthCmm);
+        }
+
         List<PackResult> packedSheets = maxSheetLengthCmm == null
                 ? List.of(packSingleSheet(pieces, usableWidth, input.allowRotateGlobal()))
                 : packMultipleSheets(pieces, usableWidth, maxSheetLengthCmm, input.allowRotateGlobal());
@@ -151,14 +156,46 @@ public class NestingEngine {
                         "Hinh \"" + item.label() + "\" co kich thuoc khong hop le.");
             }
             boolean allowRotate = input.allowRotateGlobal() && item.allowRotate();
+            List<Cavity> cavities = toCavities(item, realW, realH);
             for (int i = 0; i < item.quantity(); i++) {
                 pieces.add(new Piece(id++, item.fileId(), item.label(),
                         realW + gapCmm, realH + gapCmm, realW, realH,
-                        allowRotate, item.categoryIndex(), typeIndex, false));
+                        allowRotate, item.categoryIndex(), typeIndex, false, cavities,
+                        item.shape()));
             }
             typeIndex++;
         }
         return pieces;
+    }
+
+    /**
+     * Doi cac o trong tu milimet sang don vi noi bo, va cat bot cho an toan.
+     *
+     * <p>Lam tron VAO TRONG (goc tien len, kich thuoc lui lai): thà o trong nho hon thuc te
+     * vai phan tram milimet con hon nho ra ngoai roi cham vao net ve cua hinh chu.
+     */
+    private List<Cavity> toCavities(EngineItem item, int realW, int realH) {
+        if (item.cavities() == null || item.cavities().isEmpty()) {
+            return List.of();
+        }
+        List<Cavity> result = new ArrayList<>(item.cavities().size());
+        for (EngineItem.CavityMm c : item.cavities()) {
+            int x = Units.mmToCmmCeil(c.xMm());
+            int y = Units.mmToCmmCeil(c.yMm());
+            int right = Units.mmToCmmFloor(c.xMm() + c.widthMm());
+            int top = Units.mmToCmmFloor(c.yMm() + c.heightMm());
+
+            // Khong bao gio duoc vuot ra ngoai khung bao cua hinh chu.
+            x = Math.max(0, x);
+            y = Math.max(0, y);
+            right = Math.min(right, realW);
+            top = Math.min(top, realH);
+
+            if (right - x > 0 && top - y > 0) {
+                result.add(new Cavity(x, y, right - x, top - y));
+            }
+        }
+        return List.copyOf(result);
     }
 
     /** Chan som truong hop hinh khong the nao vua kho, ke ca sau khi xoay. */
@@ -565,7 +602,7 @@ public class NestingEngine {
         long totalArea = 0;
         int tallestSingle = 0;
         for (Piece piece : pieces) {
-            totalArea += piece.area();
+            totalArea += piece.netArea();
             tallestSingle = Math.max(tallestSingle, piece.shortSide());
         }
         int byArea = (int) Math.ceil(totalArea / (double) usableWidth);

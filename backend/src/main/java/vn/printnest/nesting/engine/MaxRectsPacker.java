@@ -229,7 +229,38 @@ public final class MaxRectsPacker {
                 freeRects.remove(i);
             }
         }
+        addCavities(placed, generated);
         mergeGenerated(generated);
+    }
+
+    /**
+     * Tra lai cho thuat toan cac o TRONG nam ben trong khung bao cua hinh vua dat.
+     *
+     * <p>Khung bao cua mot hinh khong phai luc nao cung dac. Mot hinh chu L co khung bao
+     * vuong nhung bo trong han mot goc; truoc day ca goc do bi coi la da dung, khong ai
+     * duoc dat vao. Gio moi o trong duoc dua nguoc vao danh sach o kha dung, nen mot hinh
+     * nho vua van co the chui vao - dung nhu tho xep tay van lam.
+     *
+     * <p>An toan la do khau trich xuat bao dam: moi diem cua o trong da cach net ve cua
+     * hinh chu it nhat mot gap. Hinh nao duoc packer dat LOT trong o do thi tu dong du
+     * khoang ho, khong can kiem tra gi them o day.
+     */
+    private void addCavities(PlacedPiece placed, List<FreeRect> generated) {
+        List<Cavity> cavities = placed.piece().cavities();
+        if (cavities.isEmpty()) {
+            return;
+        }
+        for (Cavity cavity : cavities) {
+            // Hinh co the da bi packer xoay 90 do; hoc lom phai xoay theo y het.
+            Cavity oriented = placed.rotated()
+                    ? cavity.rotated90(placed.piece().realH())
+                    : cavity;
+            generated.add(new FreeRect(
+                    placed.x() + oriented.x(),
+                    placed.y() + oriented.y(),
+                    oriented.w(),
+                    oriented.h()));
+        }
     }
 
     /**

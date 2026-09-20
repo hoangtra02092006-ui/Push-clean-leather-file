@@ -9,9 +9,10 @@ import java.util.List;
  *
  * @param storage cau hinh luu file
  * @param cors    cau hinh CORS
+ * @param trim    cau hinh cat khoang trang quanh hinh
  */
 @ConfigurationProperties(prefix = "app")
-public record AppProperties(Storage storage, Cors cors) {
+public record AppProperties(Storage storage, Cors cors, Trim trim) {
 
     /**
      * @param path        thu muc luu file tam tren dia
@@ -24,5 +25,13 @@ public record AppProperties(Storage storage, Cors cors) {
      * @param allowedOrigins danh sach origin duoc phep goi API
      */
     public record Cors(List<String> allowedOrigins) {
+    }
+
+    /**
+     * @param enabled co doc content stream de cat bo khoang trang quanh hinh khong.
+     *                Tat di thi quay ve lay tron kho trang nhu truoc - dung khi gap file
+     *                la khien viec cat cho ket qua sai.
+     */
+    public record Trim(boolean enabled) {
     }
 }
