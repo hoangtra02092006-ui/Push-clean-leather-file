@@ -141,13 +141,22 @@ Nền `--c-surface`, viền 1px, bo `--r-md`, padding `--s-5`. Props: `title`, `
 
 ### `AppTable`
 
-Props: `columns: string[]`. Nội dung do component gọi truyền qua slot mặc định.
+Props: `columns: (string | { label: string; align?: 'left' | 'right' | 'center' })[]`. Nội dung do component gọi truyền qua slot mặc định.
+
+**Cột số phải khai `align: 'right'`.** Chuỗi trần mặc định căn trái; nếu ô dữ liệu căn phải (`col-num`) mà tiêu đề để mặc định thì hai hàng lệch nhau — chữ nằm mép trái, con số nằm mép phải.
+
+```ts
+const columns = [
+  'Tên file',
+  { label: 'Rộng (cm)', align: 'right' as const },
+]
+```
 
 Header nền `--c-bg`, chữ `--fs-sm`, dính khi cuộn. Hàng có viền dưới 1px, rê chuột đổi nền. Thêm class `col-num` vào `<td>` để căn phải + `tabular-nums`. Bọc sẵn `.scroll-x` nên tự cuộn ngang ở màn hẹp.
 
 ### `AppStepper`
 
-Props: `current: number` (1–3). Bước đã qua bấm quay lại được; bước chưa tới `disabled` thật.
+Props: `current: number` (1–3). Một bước bấm được khi nó **đủ dữ liệu** (bước 2 cần có hình, bước 3 cần đã chạy một job), chứ không phải khi nó nằm trước bước hiện tại — nhờ vậy có kết quả rồi vẫn nhảy tự do giữa cả ba bước. Bước chưa đủ dữ liệu `disabled` thật.
 
 ### `AppBadge`
 

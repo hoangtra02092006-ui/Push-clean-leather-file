@@ -27,6 +27,9 @@ curl -X POST http://localhost:8080/api/v1/files \
     "originalName": "nhan-ao.pdf",
     "widthMm": 200.0,
     "heightMm": 180.0,
+    "sourceWidthMm": 200.0,
+    "sourceHeightMm": 180.0,
+    "trimmed": false,
     "type": "PDF",
     "pageCount": 1,
     "previewUrl": "/api/v1/files/4f2c8a91-6d3e-4b17-9a52-1e8f0c7d4b33/preview"
@@ -36,6 +39,9 @@ curl -X POST http://localhost:8080/api/v1/files \
     "originalName": "logo.png",
     "widthMm": 52.92,
     "heightMm": 52.92,
+    "sourceWidthMm": 52.92,
+    "sourceHeightMm": 52.92,
+    "trimmed": false,
     "type": "IMAGE",
     "pageCount": 1,
     "previewUrl": "/api/v1/files/8b1d5e77-2a94-4c60-b3f1-9d6e2a5c8017/preview"
@@ -43,7 +49,14 @@ curl -X POST http://localhost:8080/api/v1/files \
 ]
 ```
 
-> `widthMm`/`heightMm` là kích thước **vật lý khi in**, không phải pixel. Với PDF lấy theo TrimBox → CropBox → MediaBox; với ảnh quy đổi từ pixel theo DPI trong metadata (không có thì 72 DPI).
+> `widthMm`/`heightMm` là kích thước **vật lý khi in**, không phải pixel.
+>
+> Với **PDF**, đây là kích thước của **vùng có nét vẽ thật**, đã bỏ khoảng trắng bao quanh.
+> `sourceWidthMm`/`sourceHeightMm` là khổ trang nguyên bản, và `trimmed` cho biết có cắt
+> được gì không. Ví dụ một hình 3×3 cm nằm giữa trang A4 sẽ trả về `widthMm: 30`,
+> `sourceWidthMm: 210`, `trimmed: true`. Tắt bằng `APP_TRIM_ENABLED=false`.
+>
+> Với **ảnh**, không cắt gì cả — xem [BACKEND.md](BACKEND.md#4-đọc-kích-thước-vật-lý-filemetadatareader).
 
 **Lỗi có thể gặp:** `UNSUPPORTED_FORMAT`, `FILE_TOO_LARGE`, `SIZE_UNREADABLE`.
 
@@ -51,9 +64,18 @@ curl -X POST http://localhost:8080/api/v1/files \
 
 ## 2. `GET /api/v1/files/{id}/preview` — Ảnh xem trước
 
-Trả về `image/png`. Với PDF thì render trang đầu ở 36 DPI; với ảnh thì trả lại chính ảnh đó.
+Trả về ảnh **đã cắt khoảng trắng và thu nhỏ về tối đa 360 px cạnh dài**, được giữ lại trong bộ nhớ nên lần hỏi sau trả về gần như tức thì.
 
-Ảnh này chỉ phục vụ hiển thị — việc xuất PDF luôn dùng file gốc nên không ảnh hưởng chất lượng in.
+Kiểu MIME **không cố định**, tuỳ loại file nguồn:
+
+| File nguồn | Trả về | Vì sao |
+|---|---|---|
+| PDF | `image/png` | Nét vẽ chỉ vài màu → PNG ra vài KB và sắc cạnh |
+| PNG / JPG | `image/jpeg` (chất lượng 0,82) | Ảnh chụp mã PNG phình tới ~258 KB, JPEG chỉ còn ~1/10 mà mắt thường không phân biệt |
+
+Với PDF, ảnh được cắt đúng bằng vùng có nét vẽ (`contentBox`) nên **khớp với `widthMm`/`heightMm` trả về ở mục 1**. Cách cắt là đặt lại CropBox của trang rồi để PDFBox vẽ, nhờ vậy `/Rotate` của trang được xử lý một lần duy nhất và ảnh xem trước không bao giờ lệch so với file xuất ra. Ảnh bitmap không bị cắt vì viền trắng của ảnh có thể là cố ý.
+
+Ảnh này chỉ phục vụ hiển thị — việc xuất PDF luôn dùng file gốc nên không ảnh hưởng chất lượng in. Với ảnh lớn, backend giải nén ở độ phân giải thấp ngay từ đầu (subsampling) thay vì đọc trọn ảnh rồi mới thu nhỏ.
 
 **Lỗi:** `FILE_NOT_FOUND`.
 
@@ -65,6 +87,7 @@ Trả về `image/png`. Với PDF thì render trang đầu ở 36 DPI; với ả
 
 ```json
 {
+  "mode": "ORTHOGONAL",
   "sheetWidthMm": 570,
   "marginMm": 5,
   "gapMm": 3,
@@ -90,6 +113,7 @@ Trả về `image/png`. Với PDF thì render trang đầu ở 36 DPI; với ả
 
 | Trường | Bắt buộc | Ý nghĩa |
 |---|---|---|
+| `mode` | | `ORTHOGONAL` (mặc định) = chỉ xoay 0°/90°, mỗi hình chiếm trọn khung chữ nhật. `FREE` = cho phép hình nhỏ lồng vào phần trống bên trong khung của hình lớn |
 | `sheetWidthMm` | ✔ | Khổ ngang cuộn, phải > 0 |
 | `marginMm` | ✔ | Lề biên mỗi phía, ≥ 0 |
 | `gapMm` | ✔ | Khoảng hở tối thiểu giữa hai hình bất kỳ, ≥ 0 |
@@ -211,6 +235,8 @@ ySvg = sheet.lengthMm − placement.yMm − placement.hMm
 
 `categoryIndex` là thứ tự loại hình (0, 1, 2…), dùng để tô màu preview nhất quán giữa các lần chạy.
 
+> **Lưu ý về `fillRate` ở chế độ `FREE`.** Tỷ lệ lấp đầy được tính trên diện tích **khung bao**. Ở chế độ `FREE` các khung bao được phép lồng nhau, nên phần lồng bị đếm hai lần và `fillRate` cao hơn thực tế. Con số đáng tin để so sánh hai chế độ là **`totalLengthMm`** — đó cũng là thứ xưởng trả tiền.
+
 **Lỗi:** `JOB_NOT_FOUND`.
 
 ---
@@ -222,7 +248,7 @@ Trả về `application/pdf` kèm `Content-Disposition: attachment`.
 Tên file có sẵn kích thước để thợ không phải mở ra kiểm tra:
 
 ```
-printnest-a7e3f019-tam01-57x478cm.pdf
+minh-tri-a7e3f019-tam01-57x478cm.pdf
 ```
 
 `index` bắt đầu từ **0**.

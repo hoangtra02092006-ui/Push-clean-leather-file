@@ -87,17 +87,23 @@ Lý do tách `NestingJobRunner` khỏi `NestingService`: Spring hiện thực `@
 
 Đây là chỗ dễ sai nhất của cả luồng: một file "to" trên màn hình chưa chắc to khi in.
 
-**Với PDF** — lấy hộp theo thứ tự ưu tiên:
+**Với PDF** — đọc content stream để lấy **vùng có nét vẽ thật**, bỏ khoảng trắng bao quanh (xem `PdfContentBoxFinder`). Rất nhiều file in được xuất trên khổ A3/A4 trong khi hình thật chỉ nằm gọn một góc; lấy trọn khổ trang thì khoảng trắng cũng bị tính là hình và tốn giấy vô ích. Một hình 3×3 cm giữa trang A4 lấy trọn trang sẽ **lãng phí 98,6% diện tích**.
+
+Đọc vector chứ **không quét pixel**, vì một hình tô màu **trắng** vẫn là nét vẽ thật phải giữ — quét pixel sẽ tưởng là khoảng trống rồi cắt mất. Mọi lệnh vẽ được gộp vào cùng một hộp bao, nên nhiều hình nhỏ trong một file vẫn giữ nguyên vị trí tương đối.
+
+Không đọc được vector thì lui về hộp trang theo thứ tự ưu tiên:
 
 1. **TrimBox** — kích thước thành phẩm sau khi xén. Đây mới là cái thợ cần.
 2. **CropBox** — vùng hiển thị.
 3. **MediaBox** — cả trang, thường còn cả vùng tràn lề.
 
-Dùng MediaBox khi có TrimBox sẽ cho ra hình to hơn thực tế, và cả bố trí bị sai.
+Hộp đã chọn được lưu lại trong `StoredFile.contentBox` và `PdfComposer` **bắt buộc** dùng đúng hộp đó. Nếu hai bên lệch nhau, hình sẽ bị co lại hoặc lệch đi đúng bằng phần chênh.
+
+Tắt bằng `APP_TRIM_ENABLED=false`.
 
 Ngoài ra trang PDF có thể mang cờ xoay 90°/270°; khi đó chiều rộng và chiều cao hiển thị bị hoán đổi, `readPdf()` xử lý riêng trường hợp này.
 
-**Với ảnh** — đổi pixel sang milimet theo DPI ghi trong metadata (`HorizontalPixelSize` của ImageIO ghi kích thước một pixel bằng **milimet**, nên DPI = 25,4 ÷ giá trị đó). Không có DPI thì coi là **72 DPI** — quy ước của Illustrator/Photoshop khi xuất web.
+**Với ảnh** — KHÔNG cắt khoảng trắng: ảnh không có "nét vẽ" để đọc, chỉ có màu pixel, mà nền trắng của một file ảnh rất có thể là phần cố ý chừa (viền trắng của decal chẳng hạn). Cắt đi là hỏng bản in. Chỉ đổi pixel sang milimet theo DPI ghi trong metadata (`HorizontalPixelSize` của ImageIO ghi kích thước một pixel bằng **milimet**, nên DPI = 25,4 ÷ giá trị đó). Không có DPI thì coi là **72 DPI** — quy ước của Illustrator/Photoshop khi xuất web.
 
 Đọc không được thì trả `SIZE_UNREADABLE` và gợi ý người dùng nhập tay — ô kích thước ở bước 1 vốn đã cho sửa sẵn.
 
@@ -120,10 +126,14 @@ translate(x, y)                    → dịch tới vị trí đặt
                                       rồi đẩy sang phải đúng một chiều rộng,
                                       để hình rơi vào đúng ô chứ không ra ngoài trang)
   → scale(sx, sy)                  → kéo về đúng kích thước đích
-  → translate(-box.x, -box.y)      → đưa góc hộp nguồn về 0
+  → bù cờ /Rotate của trang nguồn  → trang khai xoay 90°/180°/270° thì phải tự xoay,
+                                      vì cờ đó không còn tác dụng khi nhúng sang trang khác
+  → translate(-box.x, -box.y)      → đưa góc VÙNG CÓ NÉT VẼ về 0
 ```
 
-Bước cuối quan trọng: nhiều file có góc hộp **không** nằm ở `(0,0)`; bỏ qua sẽ làm mọi hình lệch đi đúng bằng độ lệch đó.
+Bước cuối quan trọng gấp đôi kể từ khi có cắt khoảng trắng: nó vừa bù phần gốc hộp không nằm ở `(0,0)`, vừa bù đúng phần lề đã cắt. Bỏ qua thì mọi hình lệch vào trong đúng bằng khoảng trắng đã bỏ.
+
+`box` ở đây là `StoredFile.contentBox` — **cùng một hộp** mà `FileMetadataReader` đã dùng để báo kích thước ra ngoài. Dùng `form.getBBox()` là sai: nó luôn trả về CropBox, lệch với hộp đã cắt.
 
 Mỗi file nguồn chỉ được nhúng **một lần** rồi dùng lại (`formCache`, `imageCache`), dù xuất hiện 50 lần trên tấm. Không làm vậy thì file PDF phình to gấp nhiều lần và máy in xử lý ì ạch.
 
@@ -208,9 +218,11 @@ Toàn bộ tính bằng **số nguyên đơn vị 1/100 mm**. Không có phép c
 
 ```bash
 cd backend
-mvn clean verify          # toàn bộ 15 test
-mvn test -Dtest=NestingEngineTest      # chỉ thuật toán (10 test)
-mvn test -Dtest=NestingApiIntegrationTest   # chỉ API (5 test)
+./mvnw clean verify                            # toàn bộ 26 test
+./mvnw test -Dtest=NestingEngineTest           # thuật toán (10)
+./mvnw test -Dtest=PdfContentBoxFinderTest     # đọc vector tìm hộp bao (6)
+./mvnw test -Dtest=TrimWhitespaceIntegrationTest  # cắt khoảng trắng (5)
+./mvnw test -Dtest=NestingApiIntegrationTest   # API (5)
 ```
 
 ### `NestingEngineTest` — bất biến của thuật toán
@@ -224,6 +236,14 @@ Mỗi test đều chạy lại toàn bộ bộ kiểm tra bất biến:
 - Không tấm nào dài quá `maxSheetLength`.
 - Hình có `allowRotate=false` giữ nguyên hướng.
 - Cùng đầu vào cho cùng đầu ra.
+
+### `PdfContentBoxFinderTest` — đọc vector tìm hộp bao
+
+Mỗi file test được dựng tại chỗ với toạ độ **biết trước**, nên đối chiếu được tới từng milimet: một hình nhỏ giữa trang, nhiều hình rời rạc gộp thành một hộp, hình tô **màu trắng** vẫn phải giữ, nét vẽ dày được nới thêm nửa độ dày, chữ cũng tính vào, trang trắng trơn trả `null`.
+
+### `TrimWhitespaceIntegrationTest` — cắt xong hình có còn đúng chỗ không
+
+Đọc **ngược lại** vùng có nét vẽ của file PDF thành phẩm rồi đối chiếu với ô mà thuật toán đã định. Nếu phép bù toạ độ sai, hình sẽ lệch vào trong đúng bằng phần lề đã cắt và test bắt được ngay. Cũng kiểm luôn ảnh xem trước phải nhỏ hơn 240 px.
 
 ### `NestingApiIntegrationTest` — trọn luồng qua HTTP
 

@@ -9,6 +9,7 @@ target/
 node_modules/
 dist/
 dist-ssr/
+dist-test/
 *.local
 .vite/
 
@@ -34,6 +35,9 @@ storage/
 # Hệ điều hành
 .DS_Store
 Thumbs.db
+
+# Rac do Git Bash sinh ra khi mot tien trinh bi tat giua chung
+*.stackdump
 
 # Log
 *.log

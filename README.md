@@ -1,6 +1,8 @@
-# PrintNest — Ghép file in tiết kiệm khổ
+# Xưởng in Minh Trí — Ghép file in tiết kiệm khổ
 
 Công cụ nội bộ tự động **dàn khuôn (nesting)** nhiều file in lên khổ cuộn cố định sao cho tốn ít chiều dài nhất, rồi xuất ra PDF đúng khổ để gửi thẳng cho máy in.
+
+> **Về tên gọi.** Tên hiển thị trên web là **Xưởng in Minh Trí**. `PrintNest` là tên mã trong code — package `vn.printnest`, class `PrintNestApplication`, tiền tố log — giữ nguyên vì đổi tên package kéo theo toàn bộ cây thư mục mà không đem lại gì cho người dùng. File PDF tải về mang tiền tố `minh-tri-`.
 
 ---
 
@@ -124,7 +126,7 @@ Chờ tới khi thấy dòng `Started PrintNestApplication`. Backend chạy ở 
 
 Thư mục lưu file tạm mặc định là `backend/storage/` (đã nằm trong `.gitignore`).
 
-Chạy toàn bộ test (15 test: 10 cho thuật toán, 5 cho API):
+Chạy toàn bộ test (26 test):
 
 ```bash
 cd backend
@@ -181,6 +183,7 @@ npm run build
 | `APP_STORAGE_PATH` | `./storage` | Thư mục lưu file tạm |
 | `APP_MAX_FILE_SIZE` | `52428800` (50 MB) | Dung lượng tối đa mỗi file |
 | `APP_CORS_ORIGINS` | `http://localhost:5173,...` | Danh sách origin được phép, cách nhau bằng dấu phẩy |
+| `APP_TRIM_ENABLED` | `true` | Đọc content stream của PDF để lấy đúng vùng có nét vẽ, bỏ khoảng trắng bao quanh. Đặt `false` để quay về lấy trọn khổ trang |
 
 ---
 

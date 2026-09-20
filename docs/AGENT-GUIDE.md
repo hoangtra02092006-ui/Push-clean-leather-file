@@ -29,7 +29,9 @@ Chi tiết từng tầng: [BACKEND.md](BACKEND.md) · [FRONTEND.md](FRONTEND.md)
 | Đổi cách xếp hình, thêm heuristic | `backend/.../nesting/engine/NestingEngine.java`, `MaxRectsPacker.java`, `ShelfPacker.java` |
 | Thêm/đổi **tham số** ghép (khổ, gap, lề…) | `NestRequest.java` → `EngineInput.java` → `NestingService.toEngineInput()` → `types/index.ts` → `stores/nestingJob.ts` → `SettingsForm.vue` → `mock.ts` → `API.md` |
 | Thêm/đổi **số liệu kết quả** | `NestStats.java` / `Sheet.java` / `Placement.java` → `NestingEngine.toResult()` → `types/index.ts` → `mock.ts` (hàm `buildResult`) → `ResultSummary.vue` → `API.md` |
-| Đổi cách đọc kích thước file | `backend/.../file/FileMetadataReader.java` **và** `frontend/src/api/mock.ts` (`readDimensions`) |
+| Đổi cách đọc kích thước file | `backend/.../file/FileMetadataReader.java` + `PdfContentBoxFinder.java` **và** `frontend/src/api/mock.ts` (`readDimensions`) |
+| Đổi cách cắt khoảng trắng quanh hình | `PdfContentBoxFinder.java` → `FileMetadataReader.findContentBox()` → `PdfComposer.drawPdf()` (phải đi cùng nhau) |
+| Đổi cách xếp lồng theo hình thật | `OccupancyMask.java` → `CavityFinder.java` → `NestingService.cavitiesFor()` → `MaxRectsPacker.addCavities()` |
 | Đổi cách xuất PDF | `backend/.../export/PdfComposer.java` |
 | Thêm endpoint mới | Controller trong package nghiệp vụ tương ứng → `frontend/src/api/*.ts` → `API.md` |
 | Đổi giao diện một màn | `frontend/src/views/*.vue` |
@@ -47,7 +49,7 @@ Những điều này **không bao giờ** được vi phạm. Nếu một yêu c
 
 1. **Không co giãn hình.** Thuật toán chỉ tịnh tiến và xoay 90°. Co hình cho vừa khổ là in ra sai kích thước, hỏng cả lô hàng.
 2. **Bảo toàn số lượng.** Tổng hình đặt ra = tổng số lượng yêu cầu. Không thiếu, không thừa.
-3. **Không chồng lấn, không vượt khổ, đủ khoảng hở** `gap` giữa mọi cặp hình.
+3. **Không chồng lấn, không vượt khổ, đủ khoảng hở** `gap` giữa mọi cặp hình. Ở chế độ `FREE`, khung bao được phép lồng nhau nhưng **nét vẽ thật thì tuyệt đối không** — mọi ô trống trả lại cho packer phải đã cách nét vẽ ít nhất một `gap`.
 4. **Tất định.** Cùng đầu vào → cùng đầu ra. Mọi `Random` phải gieo hạt cố định; mọi `sort` phải có tie-break tới `id`.
 5. **Không raster hoá PDF.** File nguồn PDF nhúng bằng `LayerUtility.importPageAsForm`, giữ nguyên vector.
 6. **Số nguyên 1/100 mm** trong engine. Không cộng dồn số thực.
@@ -78,7 +80,18 @@ Sau mỗi lần đổi schema, chạy lại kịch bản demo ở mục 6.
 | Sửa `tokens.css` nhưng quên `DESIGN-SYSTEM.md` | Tài liệu nói một đằng, code một nẻo | Sửa cặp đôi |
 | Thêm trường vào response mà không cần | Job bị hỏi lại mỗi 700 ms → phí băng thông | Trường chỉ dùng phía server thì đánh `@JsonIgnore` |
 | Đổi `.env` của Vite mà không khởi động lại | Không có tác dụng gì | Vite chỉ đọc biến lúc khởi động |
+| Dùng `v-model` trên `<input type="number">` rồi xử lý giá trị như chuỗi | Vue tự ép sang `number` trước khi trao cho v-model → `raw.trim()` ném TypeError mỗi lần gõ, ô nhập **âm thầm** không đổi được giá trị | Dùng `type="text"` + `inputmode="decimal"`, tự đọc chuỗi thô từ DOM (`AppNumberInput`) |
 | Prune `freeRects` kiểu O(n²) mỗi lần đặt hình | Engine chậm gấp hàng chục lần | Chỉ đối chiếu các mảnh **mới sinh**, xem `mergeGenerated()` |
+| Trả ảnh xem trước ở độ phân giải gốc | JPEG 3 MB thành PNG 32 MB cho một ô 44 px — người dùng tưởng "upload chậm" | Thu nhỏ về 360 px và giữ lại trong bộ nhớ; ảnh lớn thì giải nén subsampling |
+| Tạo file `.vue`/`.md` bằng heredoc của Bash | Dấu tiếng Việt rụng sạch, cả màn hình thành tiếng Việt không dấu mà build vẫn xanh nên không ai phát hiện | Ghi file có dấu bằng công cụ Write hoặc `fs.writeFileSync` (UTF-8), đừng đẩy qua heredoc |
+| Thay chuỗi hàng loạt bằng bảng có khoá ngắn (`Loi`, `goc `, `Ket qua`) | Khoá ngắn trúng cả vào chú thích, sinh ra câu nửa có dấu nửa không | Sắp bảng theo khoá **dài trước**, rồi soát lại các dòng chú thích lẫn dấu |
+| Ô dữ liệu đánh `col-num` nhưng tiêu đề cột để mặc định | `th` căn trái, `td` căn phải → cột số nào cũng lệch, nhìn như bảng vỡ | Khai `align` cho cột ngay trong mảng `columns` của `AppTable` |
+| Nhãn đổi độ dài theo trạng thái (`Có` ↔ `Không`) nằm trong ô bảng | Bật/tắt một cái là cả bảng bị đẩy ngang | Chốt `min-width` cho nhãn đủ chứa chuỗi dài nhất |
+| Ảnh xem trước vẽ cả trang trong khi bảng ghi kích thước đã cắt trắng | Thợ nhìn ảnh lệch hẳn số đo, tưởng app đọc sai khổ file | Đặt lại CropBox của trang bằng `contentBox` rồi để PDFBox vẽ — đừng tự cắt bitmap (sẽ phải tự xử lý `/Rotate`) |
+| Kích thước báo ra ngoài lấy từ hộp A, `PdfComposer` lại vẽ theo hộp B | Hình bị co lại hoặc lệch đúng bằng phần chênh — in ra sai kích thước | Cả hai phải dùng **cùng** `StoredFile.contentBox`, không dùng `form.getBBox()` |
+| Tìm vùng có hình bằng cách quét pixel không trắng | Hình tô màu trắng bị coi là khoảng trống rồi cắt mất | Đọc content stream (`PdfContentBoxFinder`), không quét ảnh |
+| Quên trừ diện tích hốc lõm khỏi cận dưới tìm nhị phân | Cận dưới cao hơn lời giải tối ưu → tự chặn mất đúng cái lợi vừa tạo ra | Dùng `Piece.netArea()` chứ không phải `area()` |
+| Xoay hốc lõm theo chiều cao ĐÃ nở gap | Hốc lệch đi đúng một gap, hình chui vào bị chạm nét vẽ | Xoay theo `realH`, khớp với `PdfComposer` |
 
 ---
 
@@ -93,7 +106,7 @@ cd backend
 ./mvnw clean verify          # Windows: .\mvnw.cmd clean verify
 ```
 
-Yêu cầu: **15/15 test pass**. Trong log phải thấy dòng nghiệm thu:
+Yêu cầu: **26/26 test pass**. Trong log phải thấy dòng nghiệm thu:
 
 ```
 [NGHIEM THU] chieu dai = 478.2 cm | lap day = 92.45% | tiet kiem = 71.9% | so tam = 1
@@ -106,6 +119,7 @@ Yêu cầu: **15/15 test pass**. Trong log phải thấy dòng nghiệm thu:
 ```bash
 cd frontend
 npm run type-check    # phải sạch, không cảnh báo
+npm run test          # kiểm phần đọc số từ ô nhập
 npm run build         # phải thành công
 ```
 

@@ -161,6 +161,7 @@ Bật bằng `VITE_USE_MOCK=true`, hoặc tự bật khi chưa khai `VITE_API_BA
 - `src/api/mock.ts` thay thế toàn bộ tầng API.
 - Kích thước file được đọc **ngay trên trình duyệt**: ảnh lấy pixel thật ÷ 96 DPI; PDF thì dò chuỗi `/MediaBox [...]` trong 64 KB đầu file.
 - Thuật toán nesting rút gọn chạy bằng TypeScript, trả dữ liệu **đúng y hệt schema thật**.
+- **Không cắt khoảng trắng** quanh hình: đọc content stream của PDF cần một bộ phân tích đầy đủ, quá nặng để nhét vào bundle trình duyệt. Bảng sẽ báo kích thước trọn khổ trang và không có nhãn "đã cắt trắng".
 - Header hiện badge **"Chế độ demo"**.
 - Nút tải PDF bị chặn lại kèm thông báo giải thích, thay vì để người dùng bấm vào một link hỏng.
 
