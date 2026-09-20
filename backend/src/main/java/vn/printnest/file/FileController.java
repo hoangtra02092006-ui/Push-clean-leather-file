@@ -29,13 +29,18 @@ public class FileController {
         return fileService.store(files);
     }
 
-    /** Anh PNG xem truoc cua mot file. */
+    /**
+     * Anh xem truoc cua mot file, da cat khoang trang va thu nho.
+     *
+     * <p>Kieu MIME do {@link FileService} quyet dinh chu khong co dinh: net ve tu PDF tra
+     * ve PNG cho sac canh, con anh chup tra ve JPEG cho nhe.
+     */
     @GetMapping("/{id}/preview")
     public ResponseEntity<byte[]> preview(@PathVariable String id) {
-        byte[] png = fileService.renderPreview(id);
+        FileService.Preview preview = fileService.renderPreview(id);
         return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_PNG)
+                .contentType(MediaType.parseMediaType(preview.contentType()))
                 .header("Cache-Control", "public, max-age=3600")
-                .body(png);
+                .body(preview.bytes());
     }
 }
