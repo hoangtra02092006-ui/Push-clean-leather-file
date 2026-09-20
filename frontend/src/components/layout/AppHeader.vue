@@ -1,6 +1,7 @@
 <script setup lang="ts">
-/** Thanh dau trang: logo + ten xuong ben trai, nut phu ben phai. */
+/** Thanh đầu trang: logo + tên xưởng bên trái, nút phụ bên phải. */
 import { RouterLink } from 'vue-router'
+import logoUrl from '@/assets/brand/logo.png'
 import { USE_MOCK } from '@/api/client'
 import AppBadge from '@/components/ui/AppBadge.vue'
 import { useUiStore } from '@/stores/ui'
@@ -9,7 +10,7 @@ const ui = useUiStore()
 
 function showHelp() {
   ui.notify(
-    'Quy trinh: nap file in -> nhap kho ngang, le, khoang cach -> bam Ghep file -> tai PDF ve gui may in.',
+    'Quy trình: nạp file in → nhập khổ ngang, lề, khoảng cách → bấm Ghép file → tải PDF về gửi máy in.',
     'info',
   )
 }
@@ -19,32 +20,16 @@ function showHelp() {
   <header class="header">
     <div class="header__inner">
       <RouterLink to="/" class="brand">
-        <span class="brand__mark" aria-hidden="true">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="3" y="3" width="7" height="7" rx="1" />
-            <rect x="14" y="3" width="7" height="7" rx="1" />
-            <rect x="14" y="14" width="7" height="7" rx="1" />
-            <rect x="3" y="14" width="7" height="7" rx="1" />
-          </svg>
-        </span>
+        <img class="brand__mark" :src="logoUrl" alt="" width="34" height="34" />
         <span class="brand__text">
-          <strong>PrintNest</strong>
-          <span class="brand__sub">Xuong in Hoang Gia</span>
+          <strong>Xưởng in Minh Trí</strong>
+          <span class="brand__sub">Ghép file in tiết kiệm khổ</span>
         </span>
       </RouterLink>
 
       <div class="header__right">
-        <AppBadge v-if="USE_MOCK" tone="warn">Che do demo</AppBadge>
-        <button type="button" class="header__link" @click="showHelp">Tro giup</button>
+        <AppBadge v-if="USE_MOCK" tone="warn">Chế độ demo</AppBadge>
+        <button type="button" class="header__link" @click="showHelp">Trợ giúp</button>
       </div>
     </div>
   </header>
@@ -81,14 +66,13 @@ function showHelp() {
   text-decoration: none;
 }
 
+/* Logo la dia tron san; bo tron them de vien khong bao gio lo goc vuong. */
 .brand__mark {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--r-sm);
-  background: var(--c-accent-soft);
-  color: var(--c-accent);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .brand__text strong {

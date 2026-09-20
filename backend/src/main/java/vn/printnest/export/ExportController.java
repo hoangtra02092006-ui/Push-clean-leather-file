@@ -23,6 +23,14 @@ import java.util.zip.ZipOutputStream;
 @RequestMapping("/api/v1/nesting/jobs/{jobId}")
 public class ExportController {
 
+    /**
+     * Tien to ten file tai ve.
+     *
+     * <p>Khong dau va khong khoang trang: ten file di qua header HTTP roi xuong may in,
+     * dau tieng Viet o do rat de bi bo doc sai.
+     */
+    private static final String BRAND = "minh-tri";
+
     private final NestingService nestingService;
     private final PdfComposer composer;
 
@@ -65,7 +73,7 @@ public class ExportController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"printnest-" + shortId(jobId) + ".zip\"")
+                        "attachment; filename=\"" + BRAND + "-" + shortId(jobId) + ".zip\"")
                 .body(buffer.toByteArray());
     }
 
@@ -82,8 +90,8 @@ public class ExportController {
     private String fileName(Job job, Sheet sheet) {
         long widthCm = Math.round(sheet.widthMm() / 10d);
         long lengthCm = Math.round(sheet.lengthMm() / 10d);
-        return String.format("printnest-%s-tam%02d-%dx%dcm.pdf",
-                shortId(job.jobId()), sheet.index() + 1, widthCm, lengthCm);
+        return String.format("%s-%s-tam%02d-%dx%dcm.pdf",
+                BRAND, shortId(job.jobId()), sheet.index() + 1, widthCm, lengthCm);
     }
 
     private String shortId(String jobId) {
