@@ -8,6 +8,7 @@ import vn.printnest.nesting.model.NestResult;
 import vn.printnest.nesting.model.NestStats;
 import vn.printnest.nesting.model.Placement;
 import vn.printnest.nesting.model.Sheet;
+import vn.printnest.nesting.model.TypeStats;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -728,7 +729,8 @@ public class NestingEngine {
                 Units.round2(usedArea),
                 round4(fillRate),
                 round4(savedVsIndividualPct(sheets, totalLengthMm, input)),
-                placedCount);
+                placedCount,
+                TypeStats.from(sheets, usedArea));
 
         return new NestResult(sheets, stats);
     }

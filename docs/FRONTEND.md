@@ -65,7 +65,7 @@ Props chi tiết ở [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md#6-component).
 | `ItemTable` | Bảng hình: sửa kích thước, số lượng, cờ xoay, xoá |
 | `SettingsForm` | Form tham số, validate ngay dưới ô nhập |
 | `SheetPreview` | Vẽ một tấm bằng SVG đúng tỷ lệ, có thước đo và tooltip |
-| `ResultSummary` | Hàng 4 ô số liệu |
+| `ResultSummary` | Hàng 4 ô số liệu, kèm bảng "từng mẫu chiếm bao nhiêu" (trọng số + tỷ lệ lấp đầy của mỗi loại hình) |
 
 ## 3. Quy ước đơn vị
 

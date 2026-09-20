@@ -22,6 +22,7 @@ import type {
   NestResult,
   Placement,
   Sheet,
+  TypeStats,
   UploadedFile,
 } from '@/types'
 
@@ -478,8 +479,54 @@ function buildResult(
           ? round4(Math.max(0, ((individualLength - totalLengthMm) / individualLength) * 100))
           : 0,
       totalPieces,
+      byType: buildTypeStats(sheets, usedAreaMm2),
     },
   }
+}
+
+/**
+ * Gom cac ban in lai theo loai hinh.
+ *
+ * <p>Ban sao cua `TypeStats.from` ben backend. Gom theo `categoryIndex` chu khong theo
+ * ten file, va sap theo khoa do, de bang so lieu va hinh ve luon noi ve cung mot thu.
+ */
+function buildTypeStats(sheets: Sheet[], usedAreaMm2: number): TypeStats[] {
+  const rows = new Map<number, TypeStats>()
+  let totalShapeArea = 0
+
+  for (const sheet of sheets) {
+    for (const p of sheet.placements) {
+      let row = rows.get(p.categoryIndex)
+      if (!row) {
+        row = {
+          fileId: p.fileId,
+          label: p.label,
+          categoryIndex: p.categoryIndex,
+          pieces: 0,
+          // Kich thuoc TRUOC khi xoay: xoay 90 do thi w/h da bi hoan doi nen doi lai.
+          widthMm: p.rotated ? p.hMm : p.wMm,
+          heightMm: p.rotated ? p.wMm : p.hMm,
+          shapeAreaMm2: 0,
+          shareOfShapes: 0,
+          fillRate: 0,
+        }
+        rows.set(p.categoryIndex, row)
+      }
+      const area = p.wMm * p.hMm
+      row.pieces += 1
+      row.shapeAreaMm2 += area
+      totalShapeArea += area
+    }
+  }
+
+  return [...rows.values()]
+    .sort((a, b) => a.categoryIndex - b.categoryIndex)
+    .map((row) => ({
+      ...row,
+      shapeAreaMm2: round2(row.shapeAreaMm2),
+      shareOfShapes: totalShapeArea > 0 ? round4(row.shapeAreaMm2 / totalShapeArea) : 0,
+      fillRate: usedAreaMm2 > 0 ? round4(row.shapeAreaMm2 / usedAreaMm2) : 0,
+    }))
 }
 
 function round4(value: number): number {

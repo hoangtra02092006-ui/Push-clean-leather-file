@@ -199,7 +199,20 @@ Trả về ngay; việc tính chạy ở luồng nền. Dùng endpoint dưới �
       "usedAreaMm2": 2725740.0,
       "fillRate": 0.9245,
       "savedVsIndividualPct": 71.9,
-      "totalPieces": 145
+      "totalPieces": 145,
+      "byType": [
+        {
+          "fileId": "4f2c8a91-6d3e-4b17-9a52-1e8f0c7d4b33",
+          "label": "the-25x14.9.pdf",
+          "categoryIndex": 0,
+          "pieces": 15,
+          "widthMm": 250.0,
+          "heightMm": 149.0,
+          "shapeAreaMm2": 558750.0,
+          "shareOfShapes": 0.9214,
+          "fillRate": 0.8015
+        }
+      ]
     }
   }
 }
@@ -234,6 +247,20 @@ ySvg = sheet.lengthMm − placement.yMm − placement.hMm
 `wMm`/`hMm` là kích thước **sau khi đã xoay** — không cần tự hoán đổi khi `rotated = true`.
 
 `categoryIndex` là thứ tự loại hình (0, 1, 2…), dùng để tô màu preview nhất quán giữa các lần chạy.
+
+### `stats.byType` — số liệu tách theo từng loại hình
+
+Một dòng cho mỗi loại hình đã tải lên, **sắp theo `categoryIndex` tăng dần** (tất định — cùng đầu vào thì cùng thứ tự dòng).
+
+| Trường | Ý nghĩa |
+|---|---|
+| `pieces` | Số bản in của loại này đã đặt được |
+| `widthMm` / `heightMm` | Kích thước một bản, đo **trước khi xoay** — không đổi theo việc packer có xoay hay không |
+| `shapeAreaMm2` | Tổng diện tích các bản của loại này |
+| `shareOfShapes` | Tỷ lệ 0..1 trên **tổng diện tích hình**. Cộng hết các loại lại **bằng 1** |
+| `fillRate` | Tỷ lệ 0..1 trên **diện tích giấy đã dùng**. Cộng hết các loại lại **bằng `stats.fillRate`**; phần còn thiếu chính là giấy bỏ đi |
+
+Hai tỷ lệ này nhìn cùng một thứ từ hai phía và **không thay thế cho nhau**: `shareOfShapes` trả lời "trong số hình đem in, mẫu này chiếm bao nhiêu"; `fillRate` trả lời "mẫu này ngốn bao nhiêu phần giấy".
 
 > **Lưu ý về `fillRate` ở chế độ `FREE`.** Tỷ lệ lấp đầy được tính trên diện tích **khung bao**. Ở chế độ `FREE` các khung bao được phép lồng nhau, nên phần lồng bị đếm hai lần và `fillRate` cao hơn thực tế. Con số đáng tin để so sánh hai chế độ là **`totalLengthMm`** — đó cũng là thứ xưởng trả tiền.
 

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "type-check": "vue-tsc --noEmit",
-    "test": "esbuild src/api/units.ts --bundle --format=esm --platform=node --outfile=dist-test/units.mjs --log-level=error && node test/units.test.mjs",
+    "test": "esbuild src/api/units.ts --bundle --format=esm --platform=node --outfile=dist-test/units.mjs --log-level=error && esbuild src/api/mock.ts --bundle --format=esm --platform=node --outfile=dist-test/mock.mjs --log-level=error && node test/units.test.mjs && node test/mock.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

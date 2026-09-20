@@ -11,21 +11,10 @@
  */
 import { computed, ref } from 'vue'
 import { formatCm } from '@/api/units'
+import { categoryColor } from '@/composables/useCategoryColor'
 import type { Placement, Sheet } from '@/types'
 
 const props = defineProps<{ sheet: Sheet }>()
-
-/** Bảng màu phân loại — khớp đúng thứ tự với --c-cat-* trong tokens.css. */
-const CATEGORY_COLORS = [
-  'var(--c-cat-1)',
-  'var(--c-cat-2)',
-  'var(--c-cat-3)',
-  'var(--c-cat-4)',
-  'var(--c-cat-5)',
-  'var(--c-cat-6)',
-  'var(--c-cat-7)',
-  'var(--c-cat-8)',
-]
 
 /** Bề rộng dải thước đo bên ngoài, tính theo đơn vị milimét của hệ toạ độ SVG. */
 const RULER_MM = 26
@@ -41,7 +30,7 @@ const viewBox = computed(
 )
 
 function colorOf(placement: Placement): string {
-  return CATEGORY_COLORS[placement.categoryIndex % CATEGORY_COLORS.length]
+  return categoryColor(placement.categoryIndex)
 }
 
 /** Lật trục Y: y của SVG = chiều dài tấm − (y dưới + chiều cao hình). */

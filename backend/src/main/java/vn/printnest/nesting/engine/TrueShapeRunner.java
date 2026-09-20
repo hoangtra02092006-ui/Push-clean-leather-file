@@ -7,6 +7,7 @@ import vn.printnest.nesting.model.NestResult;
 import vn.printnest.nesting.model.NestStats;
 import vn.printnest.nesting.model.Placement;
 import vn.printnest.nesting.model.Sheet;
+import vn.printnest.nesting.model.TypeStats;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -223,7 +224,8 @@ final class TrueShapeRunner {
                 individualLength > 0
                         ? round4(Math.max(0, (individualLength - totalLengthMm) / individualLength * 100))
                         : 0,
-                placedCount);
+                placedCount,
+                TypeStats.from(sheets, usedArea));
 
         return new NestResult(sheets, stats);
     }

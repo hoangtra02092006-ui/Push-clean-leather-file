@@ -10,6 +10,7 @@ package vn.printnest.nesting.model;
  * @param fillRate              ty le lap day 0..1
  * @param savedVsIndividualPct  phan tram tiet kiem so voi in roi tung hinh
  * @param totalPieces           tong so ban in da dat (phai bang tong so luong yeu cau)
+ * @param byType                so lieu tach theo tung loai hinh, sap theo categoryIndex
  */
 public record NestStats(
         int totalSheets,
@@ -18,6 +19,7 @@ public record NestStats(
         double usedAreaMm2,
         double fillRate,
         double savedVsIndividualPct,
-        int totalPieces
+        int totalPieces,
+        java.util.List<TypeStats> byType
 ) {
 }

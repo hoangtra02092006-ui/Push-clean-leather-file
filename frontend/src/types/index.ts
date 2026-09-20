@@ -90,6 +90,30 @@ export interface Sheet {
   placements: Placement[]
 }
 
+/**
+ * So lieu cua MOT LOAI HINH tren toan bo lan ghep.
+ *
+ * Hai ty le duoi day nhin cung mot thu tu hai phia va KHAC NHAU:
+ * - shareOfShapes: trong so trong tong dien tich hinh. Cong het cac loai lai bang 1.
+ * - fillRate: chiem bao nhieu phan dien tich giay. Cong het lai bang ty le lap day chung,
+ *   phan con thieu chinh la giay bo di.
+ */
+export interface TypeStats {
+  fileId: string
+  label: string
+  /** Thu tu loai hinh - khop voi mau trong preview. */
+  categoryIndex: number
+  pieces: number
+  /** Kich thuoc mot ban, do TRUOC khi xoay. */
+  widthMm: number
+  heightMm: number
+  shapeAreaMm2: number
+  /** Ty le 0..1 tren tong dien tich hinh. */
+  shareOfShapes: number
+  /** Ty le 0..1 tren dien tich giay da dung. */
+  fillRate: number
+}
+
 /** So lieu tong hop cua mot lan ghep. */
 export interface NestStats {
   totalSheets: number
@@ -99,6 +123,8 @@ export interface NestStats {
   fillRate: number
   savedVsIndividualPct: number
   totalPieces: number
+  /** Tach theo tung loai hinh, sap theo categoryIndex tang dan. */
+  byType: TypeStats[]
 }
 
 /** Ket qua day du. */
