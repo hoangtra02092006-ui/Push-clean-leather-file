@@ -237,6 +237,14 @@ Mỗi test đều chạy lại toàn bộ bộ kiểm tra bất biến:
 - Hình có `allowRotate=false` giữ nguyên hướng.
 - Cùng đầu vào cho cùng đầu ra.
 
+### `MaxSheetLengthTest` — giới hạn chiều dài mỗi file
+
+Bất biến "không tấm nào dài quá `maxSheetLength`" ở trên **từng bị vi phạm âm thầm** ở chế độ xếp lồng: tấm dài hơn giới hạn đúng bằng một `gap` cộng 2 mm, nên đặt 200 cm với khoảng cách 5 cm thì ra tấm 205,2 cm. Bộ test cũ không bắt được vì nó chỉ chạy vài cấu hình cố định với `gap` nhỏ.
+
+Vì vậy file này có một **bài quét ngẫu nhiên hạt cố định** (22 lần thử × 2 chế độ, đủ loại lề và khoảng cách): đó là thứ duy nhất tìm ra lỗi gốc. Hạt cố định nên chạy lại bao nhiêu lần cũng ra đúng những cấu hình đó.
+
+Đây là loại lỗi không được phép im lặng — thợ đặt 200 cm vì máy in không nuốt nổi file dài hơn, app trả về 205 cm thì họ chỉ phát hiện khi file đã ở trên máy.
+
 ### `PdfContentBoxFinderTest` — đọc vector tìm hộp bao
 
 Mỗi file test được dựng tại chỗ với toạ độ **biết trước**, nên đối chiếu được tới từng milimet: một hình nhỏ giữa trang, nhiều hình rời rạc gộp thành một hộp, hình tô **màu trắng** vẫn phải giữ, nét vẽ dày được nới thêm nửa độ dày, chữ cũng tính vào, trang trắng trơn trả `null`.

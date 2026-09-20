@@ -113,13 +113,28 @@ public class NestingEngine {
         List<Piece> pieces = buildPieces(input, gapCmm);
         validateFits(pieces, usableWidth, input);
 
+        // Gioi han chieu dai phai giu DUOI HAI DANG, vi hai loi xep do chieu dai khac nhau:
+        //
+        //   maxContentLengthCmm  phan chieu dai con lai sau khi tru le bien - tuc la vung
+        //                        ma hinh duoc phep chiem. Che do xep long dung con so nay,
+        //                        vi no do tam bang dung phan hinh that chiem cho.
+        //   maxSheetLengthCmm    van con so tren nhung cong them mot gap, danh cho cac packer
+        //                        chu nhat: o cua chung da no san mot gap, va gap thua o tren
+        //                        cung bi cat di khi tinh chieu dai tam.
+        //
+        // Truoc day chi co mot con so (ban da cong gap) va no bi dung cho CA HAI loi xep.
+        // Ben xep long khong co gap nao de cat di, nen tam luon dai hon gioi han dung bang
+        // mot gap - dat 200 cm voi khoang cach 5 cm thi ra tam 205 cm.
+        Integer maxContentLengthCmm = null;
         Integer maxSheetLengthCmm = null;
         if (input.maxSheetLengthMm() != null) {
             int total = Units.mmToCmmFloor(input.maxSheetLengthMm());
-            // Cung ly do voi chieu rong: hinh tren cung khong can gap phia ngoai.
-            maxSheetLengthCmm = total - 2 * marginCmm + gapCmm;
-            int tallest = tallestPiece(pieces, input.allowRotateGlobal());
-            if (maxSheetLengthCmm < tallest) {
+            maxContentLengthCmm = total - 2 * marginCmm;
+            maxSheetLengthCmm = maxContentLengthCmm + gapCmm;
+
+            int limit = input.trueShape() ? maxContentLengthCmm : maxSheetLengthCmm;
+            int tallest = tallestPiece(pieces, input.allowRotateGlobal(), input.trueShape());
+            if (limit < tallest) {
                 throw new ApiException(ErrorCode.INVALID_REQUEST,
                         "Chieu dai toi da moi file (" + Units.round2(input.maxSheetLengthMm() / 10d)
                                 + " cm) nho hon hinh cao nhat (" + Units.round2(Units.cmmToMm(tallest) / 10d)
@@ -129,7 +144,7 @@ public class NestingEngine {
 
         if (input.trueShape()) {
             return TrueShapeRunner.run(input, pieces, marginCmm, gapCmm, sheetWidthCmm,
-                    usableWidth - gapCmm, maxSheetLengthCmm);
+                    usableWidth - gapCmm, maxContentLengthCmm);
         }
 
         List<PackResult> packedSheets = maxSheetLengthCmm == null
@@ -220,11 +235,19 @@ public class NestingEngine {
     }
 
     /** Chieu cao nho nhat ma mot hinh buoc phai chiem (co xoay thi lay canh ngan hon). */
-    private int tallestPiece(List<Piece> pieces, boolean allowRotateGlobal) {
+    /**
+     * Chieu cao cua hinh cao nhat, do theo huong tiet kiem nhat ma no duoc phep.
+     *
+     * @param realSize do theo kich thuoc THAT thay vi o da no gap. Che do xep long can
+     *                 ban that, vi no khong dung o da no de do chieu dai tam.
+     */
+    private int tallestPiece(List<Piece> pieces, boolean allowRotateGlobal, boolean realSize) {
         int tallest = 0;
         for (Piece piece : pieces) {
             boolean canRotate = allowRotateGlobal && piece.allowRotate();
-            int minHeight = canRotate ? Math.min(piece.w(), piece.h()) : piece.h();
+            int w = realSize ? piece.realW() : piece.w();
+            int h = realSize ? piece.realH() : piece.h();
+            int minHeight = canRotate ? Math.min(w, h) : h;
             tallest = Math.max(tallest, minHeight);
         }
         return tallest;

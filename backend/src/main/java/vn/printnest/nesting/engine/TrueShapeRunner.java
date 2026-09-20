@@ -46,7 +46,7 @@ final class TrueShapeRunner {
     }
 
     static NestResult run(EngineInput input, List<Piece> pieces, int marginCmm, int gapCmm,
-                          int sheetWidthCmm, int usableWidthCmm, Integer maxSheetLengthCmm) {
+                          int sheetWidthCmm, int usableWidthCmm, Integer maxContentLengthCmm) {
 
         double usableWidthMm = Units.cmmToMm(usableWidthCmm);
         int sheetCols = (int) Math.floor(usableWidthMm / CELL_MM);
@@ -74,9 +74,13 @@ final class TrueShapeRunner {
         shapes.sort(Comparator.comparingInt(TrueShapeNester.ShapePiece::footprint).reversed()
                 .thenComparingInt(s -> s.piece().id()));
 
-        Integer maxRowsPerSheet = maxSheetLengthCmm == null
+        // Chieu dai bao ra ngoai la 2*le + usedRows*CELL_MM, ma TrueShapeNester chi nhan
+        // hinh khi row + rows <= so hang cua tam. Vay so hang toi da chinh la phan chieu
+        // dai con lai sau khi tru le bien - khong nhieu hon mot hang nao, vi moi hang thua
+        // la mot milimet tran qua gioi han tho da dat.
+        Integer maxRowsPerSheet = maxContentLengthCmm == null
                 ? null
-                : (int) Math.floor(Units.cmmToMm(maxSheetLengthCmm) / CELL_MM);
+                : (int) Math.floor(Units.cmmToMm(maxContentLengthCmm) / CELL_MM);
 
         List<Sheet> sheets = new ArrayList<>();
         List<TrueShapeNester.ShapePiece> remaining = shapes;
@@ -88,8 +92,10 @@ final class TrueShapeRunner {
                 throw new ApiException(ErrorCode.NESTING_FAILED,
                         "So tam vuot qua gioi han an toan o che do xep long.");
             }
-            int budget = maxRowsPerSheet != null ? maxRowsPerSheet : totalRowBudget(remaining);
-            TrueShapeNester nester = new TrueShapeNester(sheetCols, budget + 2);
+            // Khong gioi han thi cho du hai hang cho thoai mai; co gioi han thi lay dung
+            // so hang cho phep, khong cong them.
+            int rows = maxRowsPerSheet != null ? maxRowsPerSheet : totalRowBudget(remaining) + 2;
+            TrueShapeNester nester = new TrueShapeNester(sheetCols, rows);
             List<TrueShapeNester.ShapePlacement> spots = nester.pack(remaining);
 
             if (spots.isEmpty()) {
