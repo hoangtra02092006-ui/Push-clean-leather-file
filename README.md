@@ -184,6 +184,8 @@ npm run build
 | `APP_MAX_FILE_SIZE` | `52428800` (50 MB) | Dung lượng tối đa mỗi file |
 | `APP_CORS_ORIGINS` | `http://localhost:5173,...` | Danh sách origin được phép, cách nhau bằng dấu phẩy |
 | `APP_TRIM_ENABLED` | `true` | Đọc content stream của PDF để lấy đúng vùng có nét vẽ, bỏ khoảng trắng bao quanh. Đặt `false` để quay về lấy trọn khổ trang |
+| `APP_RETENTION_HOURS` | `48` | Giữ file upload, ảnh xem trước và bản ghi lần ghép bao nhiêu giờ rồi tự xoá. Đặt `0` để **tắt hẳn** việc dọn rác |
+| `APP_RETENTION_SWEEP_MINUTES` | `60` | Bao lâu quét dọn một lần |
 
 ---
 

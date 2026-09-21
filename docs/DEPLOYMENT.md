@@ -166,6 +166,8 @@ Cách làm tương tự — cả hai đều đọc được `backend/Dockerfile`
 
 ## 5. Ghi chú vận hành
 
-- **File tạm không tự dọn.** `JobStore.purgeOlderThan()` đã có sẵn nhưng chưa được gọi định kỳ. Muốn dọn tự động thì thêm một `@Scheduled` gọi hàm này, và xoá luôn file tương ứng trên đĩa.
+- **File tạm tự dọn sau 48 giờ.** `StorageJanitor` quét mỗi giờ, xoá file quá hạn ở **cả ba chỗ**: file trên đĩa, siêu dữ liệu trong RAM (kèm bản đồ chiếm chỗ — thứ nặng nhất, file khổ lớn giữ tới nửa MB), và ảnh xem trước đã dựng. Bản ghi lần ghép cũng bị dọn theo, kể cả job kẹt ở trạng thái đang chạy.
+
+  Chỉnh bằng `APP_RETENTION_HOURS` (đặt `0` để tắt hẳn) và `APP_RETENTION_SWEEP_MINUTES`. Không có cái này thì đĩa và RAM phình vô hạn: có gắn volume thì đĩa đầy rồi dừng hẳn, không gắn thì RAM phình tới lúc JVM hết chỗ và tự khởi động lại — mất sạch file đang làm dở.
 - **Không có xác thực.** App thiết kế cho mạng nội bộ. Đưa ra Internet công khai thì nên đặt sau một lớp bảo vệ (Cloudflare Access, basic auth ở reverse proxy, hoặc thêm Spring Security).
 - **Bộ nhớ.** `JAVA_OPTS` đặt `-XX:MaxRAMPercentage=75`. Instance 512 MB là đủ cho đơn cỡ bộ nghiệm thu.

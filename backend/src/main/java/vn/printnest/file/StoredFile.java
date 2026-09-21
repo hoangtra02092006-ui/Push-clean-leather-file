@@ -17,6 +17,7 @@ package vn.printnest.file;
  * @param pageRotation goc xoay khai bao o trang PDF: 0, 90, 180 hoac 270
  * @param pageCount    so trang (anh luon la 1)
  * @param sizeBytes    dung luong file
+ * @param uploadedAt   thoi diem nhan file, dung de biet khi nao duoc phep don di
  */
 public record StoredFile(
         String id,
@@ -31,7 +32,8 @@ public record StoredFile(
         OccupancyMask occupancy,
         int pageRotation,
         int pageCount,
-        long sizeBytes
+        long sizeBytes,
+        java.time.Instant uploadedAt
 ) {
     /** Co cat bo duoc khoang trang nao khong (chenh lech dang ke so voi kho goc). */
     public boolean trimmed() {

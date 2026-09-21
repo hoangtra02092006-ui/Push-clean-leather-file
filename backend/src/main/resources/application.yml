@@ -26,8 +26,14 @@ app:
     # Doc content stream cua PDF de lay dung vung co net ve, bo khoang trang bao quanh.
     # Tat di neu gap file la khien viec cat cho ket qua sai.
     enabled: ${APP_TRIM_ENABLED:true}
+  retention:
+    # Giu file upload, anh xem truoc va ban ghi job bao nhieu gio roi tu xoa.
+    # 48 gio du de tho qua mot dem va mot ngay nghi bu. Dat 0 de tat han viec don rac.
+    hours: ${APP_RETENTION_HOURS:48}
+    # Bao lau quet mot lan.
+    sweep-minutes: ${APP_RETENTION_SWEEP_MINUTES:60}
   cors:
-    # Origin cua frontend. Tren Netlify nho them dung ten mien da cap.
+    # Origin cua frontend. Tren Netlify/Render nho them dung ten mien da cap.
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
 
 logging:

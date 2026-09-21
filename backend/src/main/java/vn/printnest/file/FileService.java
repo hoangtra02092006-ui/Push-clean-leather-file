@@ -28,6 +28,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -148,7 +150,7 @@ public class FileService {
         StoredFile stored = new StoredFile(id, originalName, target.toString(), type,
                 meta.widthMm(), meta.heightMm(), meta.sourceWidthMm(), meta.sourceHeightMm(),
                 meta.contentBox(), meta.occupancy(), meta.pageRotation(), meta.pageCount(),
-                upload.getSize());
+                upload.getSize(), Instant.now());
         files.put(id, stored);
 
         if (stored.trimmed()) {
@@ -159,6 +161,56 @@ public class FileService {
             log.info("Da nhan file {} ({} x {} mm)", originalName, stored.widthMm(), stored.heightMm());
         }
         return stored;
+    }
+
+    /**
+     * Xoa cac file nhan truoc moc thoi gian: ca tren dia LAN trong bo nho.
+     *
+     * <p>Phai xoa ca ba cho, khong duoc quen cho nao:
+     * <ul>
+     *   <li>{@code files} - kem theo la ban do chiem cho ({@link OccupancyMask}), thu
+     *       nang nhat: mot file kho lon co the giu toi nua megabyte trong bo nho;</li>
+     *   <li>{@code previewCache} - anh xem truoc da dung san;</li>
+     *   <li>chinh file tren dia.</li>
+     * </ul>
+     *
+     * <p>Xoa file tren dia that bai thi KHONG bo qua ban ghi trong bo nho: cu go ra khoi
+     * map roi ghi log canh bao. Giu lai ban ghi tro toi mot file co the da hong chi lam
+     * lan them, ma bo nho thi van khong duoc giai phong.
+     *
+     * @param age tuoi toi da duoc giu lai
+     * @return so file da xoa va tong dung luong da giai phong tren dia
+     */
+    public Purge purgeOlderThan(Duration age) {
+        Instant cutoff = Instant.now().minus(age);
+        int removed = 0;
+        long freedBytes = 0;
+
+        for (StoredFile file : List.copyOf(files.values())) {
+            if (file.uploadedAt() == null || !file.uploadedAt().isBefore(cutoff)) {
+                continue;
+            }
+            files.remove(file.id());
+            previewCache.remove(file.id());
+            try {
+                if (Files.deleteIfExists(Path.of(file.storedPath()))) {
+                    freedBytes += file.sizeBytes();
+                }
+            } catch (IOException ex) {
+                log.warn("Khong xoa duoc file {} tren dia: {}", file.storedPath(), ex.getMessage());
+            }
+            removed++;
+        }
+        return new Purge(removed, freedBytes);
+    }
+
+    /**
+     * Ket qua mot lan don rac.
+     *
+     * @param files      so file da xoa
+     * @param freedBytes dung luong da giai phong tren dia
+     */
+    public record Purge(int files, long freedBytes) {
     }
 
     /** Lay thong tin file, bao loi ro neu khong con tren may chu. */
