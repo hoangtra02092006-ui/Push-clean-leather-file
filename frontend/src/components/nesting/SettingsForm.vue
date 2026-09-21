@@ -51,7 +51,7 @@ const MODES: Array<{ value: NestSettings['mode']; title: string; hint: string }>
   },
   {
     value: 'TRUE_SHAPE',
-    title: 'Xếp lồng theo hình thật (tiết kiệm nhất)',
+    title: 'Xếp lồng theo hình thật',
     hint: 'Các hình lồng vào nhau theo đường nét thật, xoay nhiều góc kể cả góc chéo. CHỈ dùng khi cắt theo viền hình — cắt theo hình chữ nhật sẽ hỏng bản in.',
   },
 ]

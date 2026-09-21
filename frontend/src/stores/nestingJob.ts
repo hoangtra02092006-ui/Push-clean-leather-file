@@ -19,7 +19,9 @@ const DEFAULT_SETTINGS: NestSettings = {
   sheetWidthMm: 570,
   marginMm: 5,
   gapMm: 3,
-  maxSheetLengthMm: 2000,
+  // 100 cm: kho giay dai hon mot met la bat dau kho cam tay va de nhan nep khi keo
+  // qua may. Muon dai hon thi tho tu nang len, hoac xoa trong de bo gioi han.
+  maxSheetLengthMm: 1000,
   allowRotateGlobal: true,
   // Mặc định TẮT: phần lớn đơn cắt bế theo viền nên đường cắt vẽ thêm chỉ làm rối bản in.
   // Ai cần lưới cắt thì bật tay ở bước 2.
