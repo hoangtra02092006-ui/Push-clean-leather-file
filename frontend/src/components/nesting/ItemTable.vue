@@ -59,19 +59,44 @@ function onKeydown(event: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
-/** Gán giá trị cm từ ô nhập về lại mm trong store. */
+/**
+ * Sửa một cạnh thì cạnh kia tự đổi theo, GIỮ NGUYÊN tỷ lệ của hình đã cắt trắng.
+ *
+ * Trước đây hai ô rời nhau, nên sửa mỗi chiều rộng là hình bị kéo dẹt đi — mà app thì
+ * phóng file PDF cho vừa đúng kích thước được khai, nên in ra méo thật chứ không phải
+ * chỉ méo trên màn hình. Khoá tỷ lệ lại thì muốn in to hay nhỏ đều được, chỉ là không
+ * còn bóp méo được nữa.
+ *
+ * Tỷ lệ lấy từ kích thước ĐỌC ĐƯỢC TỪ FILE (đã cắt viền trắng), không lấy từ giá trị
+ * đang hiển thị — nếu không, sửa qua sửa lại vài lần là sai số làm tỷ lệ trôi dần.
+ */
+function ratioOf(item: NestItem): number | null {
+  if (item.originalWidthMm <= 0 || item.originalHeightMm <= 0) return null
+  return item.originalHeightMm / item.originalWidthMm
+}
+
 function setWidth(item: NestItem, raw: string) {
   const value = parseDecimalInput(raw)
-  if (value !== null && value > 0) {
-    item.widthMm = cmToMm(value)
+  if (value === null || value <= 0) return
+  item.widthMm = cmToMm(value)
+  const ratio = ratioOf(item)
+  if (ratio !== null) {
+    item.heightMm = round2(item.widthMm * ratio)
   }
 }
 
 function setHeight(item: NestItem, raw: string) {
   const value = parseDecimalInput(raw)
-  if (value !== null && value > 0) {
-    item.heightMm = cmToMm(value)
+  if (value === null || value <= 0) return
+  item.heightMm = cmToMm(value)
+  const ratio = ratioOf(item)
+  if (ratio !== null) {
+    item.widthMm = round2(item.heightMm / ratio)
   }
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100
 }
 
 function setQuantity(item: NestItem, raw: string) {
