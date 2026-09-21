@@ -7,7 +7,7 @@
  * kho ngang / le / khoang cach / chieu dai toi da KHONG BAO GIO doi duoc - nguoi dung sua
  * so tren man hinh ma thuat toan van chay bang gia tri mac dinh.
  */
-import { parseDecimalInput, cmToMm, mmToCm } from '../dist-test/units.mjs'
+import { parseDecimalInput, cmToMm, mmToCm, mmToM, formatM } from '../dist-test/units.mjs'
 
 let pass = 0
 let fail = 0
@@ -34,6 +34,10 @@ check('NaN', parseDecimalInput(Number.NaN), null)
 console.log('\nquy doi don vi:')
 check('5 cm -> mm', cmToMm(5), 50)
 check('3 mm -> cm', mmToCm(3), 0.3)
+check('1750 mm -> m', mmToM(1750), 1.75)
+// Giay cuon tinh tien theo met dai nen bang ket qua de song song ca cm lan m.
+check('hien thi met 2 chu so', formatM(1750), '1.75')
+check('hien thi met lam tron', formatM(1301), '1.30')
 
 console.log(`\n${pass} dat / ${fail} hong`)
 process.exit(fail === 0 ? 0 : 1)

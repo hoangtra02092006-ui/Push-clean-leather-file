@@ -133,6 +133,8 @@ Cao 38px (`sm`: 30px). `loading` tự hiện spinner và khoá nút.
 
 Cao 38px, viền 1px. Focus: viền đổi sang accent + ring 3px `--c-accent-soft`.
 
+> Quy đổi đơn vị **chỉ** nằm trong `src/api/units.ts`: `mmToCm`, `cmToMm`, `mmToM` và các hàm `format*`. Component không được tự chia `/10` hay `/1000`.
+
 > `AppNumberInput` dùng model `number | null`. `null` = ô để trống, có nghĩa riêng ở vài trường ("chiều dài tối đa để trống = không giới hạn"). Ép về `0` thì không phân biệt được với việc người dùng nhập số 0.
 
 ### `AppCard`

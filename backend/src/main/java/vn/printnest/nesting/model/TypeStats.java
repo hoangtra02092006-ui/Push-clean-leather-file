@@ -15,15 +15,13 @@ import java.util.Map;
  * "trong so met do, tung mau chiem bao nhieu". Chu xuong can con so thu hai de chia tien
  * giay cho tung khach, va tho can no de biet mau nao dang an cho nhat.
  *
- * <p>Hai ty le nhin cung mot thu tu hai phia, va hai cai nay KHAC NHAU:
- * <ul>
- *   <li>{@code shareOfShapes} - trong so cua loai nay trong TONG DIEN TICH HINH. Cong
- *       tat ca cac loai lai dung bang 1.</li>
- *   <li>{@code fillRate} - loai nay chiem bao nhieu phan DIEN TICH GIAY da dung. Cong
- *       tat ca cac loai lai dung bang ty le lap day chung cua ca lan ghep, phan con
- *       thieu chinh la giay bo di. Cho nao hai khung bao long vao nhau thi tinh cho hinh
- *       dung truoc - xem {@link Coverage#areaOf(int)}.</li>
- * </ul>
+ * <p>Con so quan trong nhat la {@code lengthMm}: mau nay an bao nhieu met cuon. Do la
+ * thu chu xuong dung de chia tien giay, vi giay tinh tien theo met dai chu khong theo
+ * met vuong.
+ *
+ * <p>Cong {@code lengthMm} cua tat ca cac loai lai dung bang TONG CHIEU DAI cua ca lan
+ * ghep. Nghia la phan giay bo di da duoc chia deu vao dau tung mau theo ty le - dung
+ * vay moi cong bang, vi khong mau nao mot minh gay ra cho trong.
  *
  * @param fileId         ma file nguon
  * @param label          ten hien thi
@@ -32,8 +30,7 @@ import java.util.Map;
  * @param widthMm        chieu rong mot ban, do TRUOC khi xoay
  * @param heightMm       chieu cao mot ban, do truoc khi xoay
  * @param shapeAreaMm2   tong dien tich cac ban cua loai nay
- * @param shareOfShapes  ty le 0..1 tren tong dien tich hinh
- * @param fillRate       ty le 0..1 tren dien tich giay da dung
+ * @param lengthMm       chieu dai cuon ma mau nay an, da gom ca phan giay bo di chia deu
  */
 public record TypeStats(
         String fileId,
@@ -43,8 +40,7 @@ public record TypeStats(
         double widthMm,
         double heightMm,
         double shapeAreaMm2,
-        double shareOfShapes,
-        double fillRate
+        double lengthMm
 ) {
 
     /**
@@ -56,23 +52,34 @@ public record TypeStats(
      * <p>Thu tu tra ve luon theo {@code categoryIndex} tang dan - bat buoc, vi ket qua
      * phai TAT DINH: cung dau vao thi cung dau ra, ke ca thu tu dong trong bang.
      *
-     * @param sheets       cac tam da dan khuon
-     * @param coverage     dien tich giay tung loai chiem cho RIENG, da dem moi cho mot lan
-     * @param usedAreaMm2  tong dien tich giay da dung
+     * <p>Chieu dai cua moi mau = tong chieu dai nhan ty le giay mau do chiem cho RIENG.
+     * Viet cach khac, dung cong thuc quen thuoc hon:
+     *
+     * <pre>
+     *   chieu dai mau i = (dien tich giay mau i chiem / dien tich giay da dung)
+     *                     / ty le lap day chung
+     *                     x tong chieu dai
+     * </pre>
+     *
+     * Hai cach cho cung mot ket qua vi dien tich giay da dung bi khu di; ban rut gon
+     * o duoi con co loi la cong cac dong lai ra DUNG tong chieu dai, khong du mot sai so
+     * lam tron nao.
+     *
+     * @param sheets         cac tam da dan khuon
+     * @param coverage       dien tich giay tung loai chiem cho RIENG, da dem moi cho mot lan
+     * @param totalLengthMm  tong chieu dai cuon cua ca lan ghep
      */
-    public static List<TypeStats> from(List<Sheet> sheets, Coverage coverage, double usedAreaMm2) {
+    public static List<TypeStats> from(List<Sheet> sheets, Coverage coverage, double totalLengthMm) {
         Map<Integer, Accumulator> byCategory = new LinkedHashMap<>();
-        double totalShapeArea = 0;
+        double coveredMm2 = coverage.totalAreaMm2();
 
         for (Sheet sheet : sheets) {
             for (Placement p : sheet.placements()) {
                 Accumulator acc = byCategory.computeIfAbsent(p.categoryIndex(),
                         key -> new Accumulator(p.fileId(), p.label(), key,
                                 p.sourceWMm(), p.sourceHMm()));
-                double area = p.wMm() * p.hMm();
                 acc.pieces++;
-                acc.areaMm2 += area;
-                totalShapeArea += area;
+                acc.areaMm2 += p.wMm() * p.hMm();
             }
         }
 
@@ -86,18 +93,15 @@ public record TypeStats(
                     Units.round2(acc.widthMm),
                     Units.round2(acc.heightMm),
                     Units.round2(acc.areaMm2),
-                    totalShapeArea > 0 ? round4(acc.areaMm2 / totalShapeArea) : 0,
-                    // Lap day dung dien tich CHIEM CHO RIENG chu khong phai tong khung bao:
-                    // hai khung bao long vao nhau thi phan chung chi duoc tinh mot lan, neu
-                    // khong cong cac dong lai se vuot qua 100%.
-                    usedAreaMm2 > 0 ? round4(coverage.areaOf(acc.categoryIndex) / usedAreaMm2) : 0));
+                    // Chia theo dien tich giay CHIEM CHO RIENG chu khong theo tong khung
+                    // bao: hai khung bao long vao nhau thi phan chung chi duoc tinh mot
+                    // lan, neu khong cong cac dong lai se vuot qua tong chieu dai.
+                    coveredMm2 > 0
+                            ? Units.round2(totalLengthMm * coverage.areaOf(acc.categoryIndex) / coveredMm2)
+                            : 0));
         }
         stats.sort(Comparator.comparingInt(TypeStats::categoryIndex));
         return List.copyOf(stats);
-    }
-
-    private static double round4(double value) {
-        return Math.round(value * 10000d) / 10000d;
     }
 
     /** Bien dem tam trong luc gom nhom. */

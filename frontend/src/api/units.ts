@@ -22,6 +22,21 @@ export function formatCm(mm: number, digits = 1): string {
   return value.toFixed(digits).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1')
 }
 
+/** Milimet -> met. */
+export function mmToM(mm: number): number {
+  return mm / 1000
+}
+
+/**
+ * Hien thi so met.
+ *
+ * <p>Giay cuon tinh tien theo MET DAI, nen bang ket qua de song song ca cm lan m: cm de
+ * doi chieu voi so do tren hinh, m de cong tien.
+ */
+export function formatM(mm: number, digits = 2): string {
+  return mmToM(mm).toFixed(digits)
+}
+
 /** Hien thi dien tich mm2 duoi dang cm2 co dau phan cach hang nghin. */
 export function formatAreaCm2(mm2: number): string {
   return Math.round(mm2 / 100).toLocaleString('vi-VN')

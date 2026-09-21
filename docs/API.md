@@ -209,8 +209,7 @@ Trả về ngay; việc tính chạy ở luồng nền. Dùng endpoint dưới �
           "widthMm": 250.0,
           "heightMm": 149.0,
           "shapeAreaMm2": 558750.0,
-          "shareOfShapes": 0.9214,
-          "fillRate": 0.8015
+          "lengthMm": 3835.2
         }
       ]
     }
@@ -257,12 +256,23 @@ Một dòng cho mỗi loại hình đã tải lên, **sắp theo `categoryIndex`
 | `pieces` | Số bản in của loại này đã đặt được |
 | `widthMm` / `heightMm` | Kích thước một bản, đo **trước khi xoay** — không đổi theo việc packer có xoay hay không |
 | `shapeAreaMm2` | Tổng diện tích các bản của loại này |
-| `shareOfShapes` | Tỷ lệ 0..1 trên **tổng diện tích hình**. Cộng hết các loại lại **bằng 1** |
-| `fillRate` | Tỷ lệ 0..1 trên **diện tích giấy đã dùng**. Cộng hết các loại lại **bằng `stats.fillRate`**; phần còn thiếu chính là giấy bỏ đi |
+| `lengthMm` | **Chiều dài cuộn mẫu này ăn**, đã gồm cả phần giấy bỏ đi chia đều. Cộng hết các loại lại **bằng `stats.totalLengthMm`** |
 
-Hai tỷ lệ này nhìn cùng một thứ từ hai phía và **không thay thế cho nhau**: `shareOfShapes` trả lời "trong số hình đem in, mẫu này chiếm bao nhiêu"; `fillRate` trả lời "mẫu này ngốn bao nhiêu phần giấy".
+`lengthMm` là con số chủ xưởng dùng để chia tiền giấy, vì giấy tính tiền theo **mét dài** chứ không theo mét vuông:
 
-> **Mọi `fillRate` đều đếm mỗi chỗ trên giấy đúng MỘT lần.** Ở chế độ `FREE` và `TRUE_SHAPE`, khung bao của hai hình được phép lồng vào nhau, nên cộng tổng khung bao sẽ ra tỷ lệ vượt 100%. Chỗ nào hai khung bao cùng trùm thì tính cho hình đứng trước trong danh sách — nói cách khác `fillRate` của một mẫu là **phần giấy nó chiếm chỗ riêng**, còn hình nhỏ chui gọn vào góc trống của hình lớn thì không tốn thêm giấy nào nên không được tính.
+```
+lengthMm = tổng chiều dài × (diện tích giấy mẫu này chiếm / tổng diện tích bị phủ)
+```
+
+Viết theo cách quen thuộc hơn thì tương đương:
+
+```
+lengthMm = (diện tích giấy mẫu này chiếm / diện tích giấy đã dùng) ÷ tỷ lệ lấp đầy × tổng chiều dài
+```
+
+Chia cho tỷ lệ lấp đầy chính là để **tính cả phần giấy bỏ đi vào đầu mỗi mẫu** — công bằng, vì không mẫu nào một mình gây ra chỗ trống. Bản rút gọn ở trên cho cùng kết quả mà cộng lại đúng tổng, không dư một sai số làm tròn nào.
+
+> **"Diện tích giấy mẫu này chiếm" đếm mỗi chỗ đúng MỘT lần.** Ở chế độ `FREE` và `TRUE_SHAPE`, khung bao của hai hình được phép lồng vào nhau; chỗ nào hai khung bao cùng trùm thì tính cho hình đứng trước trong danh sách. Hình nhỏ chui gọn vào góc trống của hình lớn **không tốn thêm mét giấy nào** nên chiều dài của nó gần bằng 0 — đúng như thực tế.
 
 > **Lưu ý về `fillRate` ở chế độ `FREE`.** Tỷ lệ lấp đầy được tính trên diện tích **khung bao**. Ở chế độ `FREE` các khung bao được phép lồng nhau, nên phần lồng bị đếm hai lần và `fillRate` cao hơn thực tế. Con số đáng tin để so sánh hai chế độ là **`totalLengthMm`** — đó cũng là thứ xưởng trả tiền.
 

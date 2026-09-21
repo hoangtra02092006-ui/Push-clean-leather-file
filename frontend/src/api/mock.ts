@@ -479,7 +479,7 @@ function buildResult(
           ? round4(Math.max(0, ((individualLength - totalLengthMm) / individualLength) * 100))
           : 0,
       totalPieces,
-      byType: buildTypeStats(sheets, usedAreaMm2),
+      byType: buildTypeStats(sheets, round2(totalLengthMm)),
     },
   }
 }
@@ -489,8 +489,13 @@ function buildResult(
  *
  * <p>Ban sao cua `TypeStats.from` ben backend. Gom theo `categoryIndex` chu khong theo
  * ten file, va sap theo khoa do, de bang so lieu va hinh ve luon noi ve cung mot thu.
+ *
+ * <p>Chieu dai cua moi mau = tong chieu dai chia theo ty le dien tich giay mau do chiem.
+ * Ben backend chia theo dien tich CHIEM CHO RIENG (da tru phan khung bao long nhau); o
+ * day chia thang theo tong khung bao vi mock chi lam che do xep luoi, ma xep luoi thi
+ * khong co khung bao nao chong nhau - hai cach ra cung mot so.
  */
-function buildTypeStats(sheets: Sheet[], usedAreaMm2: number): TypeStats[] {
+function buildTypeStats(sheets: Sheet[], totalLengthMm: number): TypeStats[] {
   const rows = new Map<number, TypeStats>()
   let totalShapeArea = 0
 
@@ -507,8 +512,7 @@ function buildTypeStats(sheets: Sheet[], usedAreaMm2: number): TypeStats[] {
           widthMm: p.rotated ? p.hMm : p.wMm,
           heightMm: p.rotated ? p.wMm : p.hMm,
           shapeAreaMm2: 0,
-          shareOfShapes: 0,
-          fillRate: 0,
+          lengthMm: 0,
         }
         rows.set(p.categoryIndex, row)
       }
@@ -524,8 +528,8 @@ function buildTypeStats(sheets: Sheet[], usedAreaMm2: number): TypeStats[] {
     .map((row) => ({
       ...row,
       shapeAreaMm2: round2(row.shapeAreaMm2),
-      shareOfShapes: totalShapeArea > 0 ? round4(row.shapeAreaMm2 / totalShapeArea) : 0,
-      fillRate: usedAreaMm2 > 0 ? round4(row.shapeAreaMm2 / usedAreaMm2) : 0,
+      lengthMm:
+        totalShapeArea > 0 ? round2((totalLengthMm * row.shapeAreaMm2) / totalShapeArea) : 0,
     }))
 }
 

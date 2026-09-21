@@ -76,22 +76,22 @@ class FillRateTest {
     }
 
     /**
-     * Cong "lap day" cua moi loai lai phai dung bang ty le lap day chung.
+     * Ngay ca khi khung bao long vao nhau, cong chieu dai cua moi mau lai van ra dung
+     * tong chieu dai.
      *
-     * <p>Neu khong, dong "Giay bo di" tren man hinh (= 100% tru ty le chung) se khong khop
-     * voi cac dong ben tren no.
+     * <p>Neu tinh theo TONG khung bao thay vi phan giay chiem cho rieng, tong cac dong se
+     * vuot qua tong chieu dai - dung kieu loi da lam ty le lap day vuot 100%.
      */
     @Test
-    @DisplayName("Cong lap day cua cac loai lai bang ty le lap day chung")
-    void perTypeFillRatesAddUp() {
+    @DisplayName("Khung bao long nhau: cong chieu dai cac mau van bang tong chieu dai")
+    void perTypeLengthsAddUpEvenWhenBoxesOverlap() {
         NestResult result = engine.nest(new EngineInput(
                 SHEET_WIDTH_MM, 5, 3, null, true, hostAndGuest(10, 10), false));
 
         double sum = result.stats().byType().stream()
-                .mapToDouble(TypeStats::fillRate).sum();
+                .mapToDouble(TypeStats::lengthMm).sum();
 
-        assertThat(sum).isCloseTo(result.stats().fillRate(), within(0.0002));
-        assertThat(sum).as("va tat nhien khong duoc vuot 100%").isLessThanOrEqualTo(1.0);
+        assertThat(sum).isCloseTo(result.stats().totalLengthMm(), within(0.5));
     }
 
     /**

@@ -3,8 +3,12 @@
  * Số liệu tổng hợp của một lần ghép.
  *
  * Bốn ô số ở trên trả lời câu "cả đơn này tốn bao nhiêu mét". Bảng phía dưới trả lời câu
- * tiếp theo mà chủ xưởng luôn hỏi: "trong số mét đó, từng mẫu chiếm bao nhiêu" — để chia
- * tiền giấy cho từng khách, và để thấy mẫu nào đang ăn chỗ nhất.
+ * tiếp theo mà chủ xưởng luôn hỏi: "trong số mét đó, từng mẫu ăn mấy mét" — để chia tiền
+ * giấy cho từng khách.
+ *
+ * Cộng cột chiều dài của mọi mẫu lại đúng bằng tổng chiều dài, vì phần giấy bỏ đi đã
+ * được chia đều vào đầu từng mẫu theo tỷ lệ. Không mẫu nào một mình gây ra chỗ trống nên
+ * cũng không mẫu nào phải gánh riêng.
  *
  * Chấm màu ở cột đầu khớp đúng màu hình vẽ trong phần xem trước bố trí, nên đọc bảng rồi
  * nhìn xuống hình là nhận ra ngay từng mẫu.
@@ -13,7 +17,7 @@ import { computed } from 'vue'
 import AppStatTile from '@/components/ui/AppStatTile.vue'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppTable from '@/components/ui/AppTable.vue'
-import { formatAreaCm2, formatCm, formatCount, formatPercent } from '@/api/units'
+import { formatAreaCm2, formatCm, formatCount, formatM, formatPercent } from '@/api/units'
 import { categoryColor } from '@/composables/useCategoryColor'
 import type { NestStats } from '@/types'
 
@@ -31,12 +35,9 @@ const columns = [
   { label: 'Kích thước (cm)', align: 'right' as const },
   { label: 'Số bản', align: 'right' as const },
   { label: 'Diện tích (cm²)', align: 'right' as const },
-  { label: 'Trọng số', align: 'right' as const },
-  { label: 'Lấp đầy', align: 'right' as const },
+  { label: 'Chiều dài (cm)', align: 'right' as const },
+  { label: 'Chiều dài (m)', align: 'right' as const },
 ]
-
-/** Phần giấy không hình nào phủ tới — chính là chỗ bị bỏ đi. */
-const wastePct = computed(() => formatPercent(1 - props.stats.fillRate, 1))
 </script>
 
 <template>
@@ -50,8 +51,8 @@ const wastePct = computed(() => formatPercent(1 - props.stats.fillRate, 1))
 
     <AppCard
       v-if="byType.length > 0"
-      title="Từng mẫu chiếm bao nhiêu"
-      subtitle="Trọng số là phần của mẫu đó trong tổng diện tích hình; lấp đầy là phần nó phủ trên giấy."
+      title="Từng mẫu ăn mấy mét"
+      subtitle="Chiều dài thực tế đã tính cả phần giấy bỏ đi, chia đều theo tỷ lệ. Cộng lại đúng bằng tổng chiều dài."
     >
       <AppTable :columns="columns">
         <tr v-for="row in byType" :key="row.categoryIndex">
@@ -68,32 +69,21 @@ const wastePct = computed(() => formatPercent(1 - props.stats.fillRate, 1))
           <td class="col-num">{{ formatCm(row.widthMm) }} x {{ formatCm(row.heightMm) }}</td>
           <td class="col-num">{{ formatCount(row.pieces) }}</td>
           <td class="col-num">{{ formatAreaCm2(row.shapeAreaMm2) }}</td>
-          <td class="col-num">
-            <span class="bar" aria-hidden="true">
-              <span
-                class="bar__fill"
-                :style="{
-                  width: `${Math.max(2, row.shareOfShapes * 100)}%`,
-                  background: categoryColor(row.categoryIndex),
-                }"
-              />
-            </span>
-            {{ formatPercent(row.shareOfShapes, 1) }}%
-          </td>
-          <td class="col-num">{{ formatPercent(row.fillRate, 1) }}%</td>
+          <td class="col-num">{{ formatCm(row.lengthMm, 1) }}</td>
+          <td class="col-num">{{ formatM(row.lengthMm) }}</td>
         </tr>
 
         <!--
-          Dòng chốt: cộng cột "lấp đầy" của mọi mẫu lại đúng bằng tỷ lệ lấp đầy chung, nên
-          để phần giấy bỏ đi ngay cạnh thì người đọc tự đối chiếu được mà không phải tính.
+          Dòng tổng: để ngay dưới cho thợ tự đối chiếu cột chiều dài cộng lại có khớp tổng
+          không, thay vì phải tin suông.
         -->
-        <tr class="waste">
-          <td>Giấy bỏ đi</td>
+        <tr class="total">
+          <td>Tổng</td>
           <td class="col-num">&mdash;</td>
-          <td class="col-num">&mdash;</td>
-          <td class="col-num">&mdash;</td>
-          <td class="col-num">&mdash;</td>
-          <td class="col-num">{{ wastePct }}%</td>
+          <td class="col-num">{{ formatCount(stats.totalPieces) }}</td>
+          <td class="col-num">{{ formatAreaCm2(stats.totalShapeAreaMm2) }}</td>
+          <td class="col-num">{{ formatCm(stats.totalLengthMm, 1) }}</td>
+          <td class="col-num">{{ formatM(stats.totalLengthMm) }}</td>
         </tr>
       </AppTable>
     </AppCard>
@@ -128,25 +118,7 @@ const wastePct = computed(() => formatPercent(1 - props.stats.fillRate, 1))
   border-radius: 2px;
 }
 
-/* Thanh nhỏ sau con số: thấy ngay mẫu nào áp đảo mà không phải so từng chữ số. */
-.bar {
-  display: inline-block;
-  width: 54px;
-  height: 6px;
-  margin-right: var(--s-2);
-  border-radius: 999px;
-  background: var(--c-bg);
-  overflow: hidden;
-  vertical-align: middle;
-}
-
-.bar__fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-}
-
-.waste td {
-  color: var(--c-text-mute);
+.total td {
+  font-weight: 600;
 }
 </style>

@@ -8,7 +8,7 @@
  * tren Netlify chi hien `undefined` hoac `NaN`, im lang cho toi khi co nguoi nhin thay.
  *
  * Bai test doi chieu chinh cac BAT BIEN ma bang so lieu phai giu, giong het bo test cua
- * backend: cong trong so cac loai lai bang 1, cong ty le lap day lai bang ty le chung.
+ * backend: cong chieu dai cua moi mau lai bang tong chieu dai, va khong ty le nao vuot 100%.
  */
 // `mock.ts` dung `window.setTimeout` de gia lap do tre cua mang. Chay ngoai trinh duyet
 // thi phai dung tam cai `window`, va phai dung TRUOC khi nap module - nen nap dong.
@@ -85,7 +85,7 @@ check(
 check(
   'khong con so nao la NaN',
   byType.every((row) =>
-    [row.pieces, row.widthMm, row.heightMm, row.shapeAreaMm2, row.shareOfShapes, row.fillRate]
+    [row.pieces, row.widthMm, row.heightMm, row.shapeAreaMm2, row.lengthMm]
       .every((n) => typeof n === 'number' && Number.isFinite(n)),
   ),
 )
@@ -103,20 +103,15 @@ check(
   job.result.sheets.every((sheet) => sheet.fillRate <= 1),
   job.result.sheets.map((s) => `${(s.fillRate * 100).toFixed(1)}%`).join(' '),
 )
-check(
-  'khong dong nao trong bang lap day vuot 100%',
-  byType.every((row) => row.fillRate <= 1),
-)
 
-const shareSum = byType.reduce((sum, row) => sum + row.shareOfShapes, 0)
-check('cong trong so cac loai lai bang 1', near(shareSum, 1), shareSum.toFixed(4))
-
-const fillSum = byType.reduce((sum, row) => sum + row.fillRate, 0)
+// Bat bien quan trong nhat cua bang: chia tien giay dua vao cot nay.
+const lengthSum = byType.reduce((sum, row) => sum + row.lengthMm, 0)
 check(
-  'cong ty le lap day cac loai lai bang ty le chung',
-  near(fillSum, stats.fillRate),
-  `${fillSum.toFixed(4)} / ${stats.fillRate.toFixed(4)}`,
+  'cong chieu dai cac mau lai bang tong chieu dai',
+  near(lengthSum, stats.totalLengthMm, 0.5),
+  `${(lengthSum / 10).toFixed(1)}cm / ${(stats.totalLengthMm / 10).toFixed(1)}cm`,
 )
+check('khong mau nao co chieu dai am', byType.every((row) => row.lengthMm >= 0))
 
 // Kich thuoc phai la kich thuoc GOC, khong doi theo huong packer xoay.
 // Tim theo categoryIndex chu khong theo ten: mock lay ten tu kho file da upload, ma bai

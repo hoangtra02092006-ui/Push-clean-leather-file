@@ -233,7 +233,7 @@ final class TrueShapeRunner {
                         ? round4(Math.max(0, (individualLength - totalLengthMm) / individualLength * 100))
                         : 0,
                 placedCount,
-                TypeStats.from(sheets, coverage, usedArea));
+                TypeStats.from(sheets, coverage, totalLengthMm));
 
         return new NestResult(sheets, stats);
     }

@@ -56,29 +56,53 @@ class TypeStatsTest {
                 .containsExactly(0, 1, 2);
     }
 
+    /**
+     * Bat bien quan trong nhat cua bang: cong chieu dai cua moi mau lai phai ra DUNG tong
+     * chieu dai cua ca lan ghep.
+     *
+     * <p>Neu lech, nghia la phan giay bo di dang bi tinh thieu hoac tinh trung cho ai do -
+     * ma day chinh la con so chu xuong dung de chia tien giay cho tung khach.
+     */
     @Test
-    @DisplayName("Cong trong so cua moi loai lai dung bang 1")
-    void sharesAddUpToOne() {
+    @DisplayName("Cong chieu dai cua moi mau lai dung bang tong chieu dai")
+    void lengthsAddUpToTotalLength() {
         NestResult result = engine.nest(new EngineInput(
                 SHEET_WIDTH_MM, 5, 3, null, true, threeTypes(), false));
 
         double sum = result.stats().byType().stream()
-                .mapToDouble(TypeStats::shareOfShapes).sum();
+                .mapToDouble(TypeStats::lengthMm).sum();
 
-        assertThat(sum).as("tong trong so cac loai").isCloseTo(1.0, within(EPS));
+        assertThat(sum).as("tong chieu dai cac mau")
+                .isCloseTo(result.stats().totalLengthMm(), within(0.5));
     }
 
+    /**
+     * Doi chieu voi cach tinh dai dong ma nguoi dung mo ta, de chac hai duong ra mot so.
+     *
+     * <pre>
+     *   chieu dai mau = (dien tich giay mau do chiem / dien tich giay da dung)
+     *                   / ty le lap day chung
+     *                   x tong chieu dai
+     * </pre>
+     */
     @Test
-    @DisplayName("Cong ty le lap day cua moi loai lai dung bang ty le lap day chung")
-    void fillRatesAddUpToOverallFillRate() {
+    @DisplayName("Chieu dai moi mau khop voi cach tinh qua ty le lap day")
+    void lengthMatchesTheRatioFormula() {
         NestResult result = engine.nest(new EngineInput(
                 SHEET_WIDTH_MM, 5, 3, null, true, threeTypes(), false));
 
-        double sum = result.stats().byType().stream()
-                .mapToDouble(TypeStats::fillRate).sum();
+        double totalLength = result.stats().totalLengthMm();
+        double fillRate = result.stats().fillRate();
+        double usedArea = result.stats().usedAreaMm2();
 
-        assertThat(sum).as("tong ty le lap day cua cac loai")
-                .isCloseTo(result.stats().fillRate(), within(EPS));
+        for (TypeStats row : result.stats().byType()) {
+            // O che do xep luoi khong co khung bao nao chong nhau, nen dien tich mau do
+            // chiem cho rieng bang dung tong khung bao cua no.
+            double viaRatio = row.shapeAreaMm2() / usedArea / fillRate * totalLength;
+            assertThat(row.lengthMm())
+                    .as("chieu dai cua %s", row.label())
+                    .isCloseTo(viaRatio, within(0.5));
+        }
     }
 
     @Test
@@ -128,8 +152,8 @@ class TypeStatsTest {
         assertThat(result.stats().byType()).hasSize(3);
         assertThat(result.stats().byType().stream().mapToInt(TypeStats::pieces).sum())
                 .isEqualTo(result.stats().totalPieces());
-        assertThat(result.stats().byType().stream().mapToDouble(TypeStats::shareOfShapes).sum())
-                .isCloseTo(1.0, within(EPS));
+        assertThat(result.stats().byType().stream().mapToDouble(TypeStats::lengthMm).sum())
+                .isCloseTo(result.stats().totalLengthMm(), within(0.5));
     }
 
     @Test
@@ -149,16 +173,15 @@ class TypeStatsTest {
     }
 
     @Test
-    @DisplayName("Chi mot loai hinh thi loai do chiem tron trong so")
-    void singleTypeTakesFullShare() {
+    @DisplayName("Chi mot loai hinh thi loai do an tron chieu dai")
+    void singleTypeTakesFullLength() {
         NestResult result = engine.nest(new EngineInput(
                 SHEET_WIDTH_MM, 5, 3, null, true,
                 List.of(new EngineItem("f", "nhan", 200, 180, 8, true, 0)), false));
 
         assertThat(result.stats().byType()).hasSize(1);
         TypeStats only = result.stats().byType().get(0);
-        assertThat(only.shareOfShapes()).isCloseTo(1.0, within(EPS));
-        assertThat(only.fillRate()).isCloseTo(result.stats().fillRate(), within(EPS));
+        assertThat(only.lengthMm()).isCloseTo(result.stats().totalLengthMm(), within(0.5));
     }
 
     /** Tat dinh: chay lai nhieu lan phai ra dung mot bang, dung ca thu tu dong. */

@@ -93,10 +93,9 @@ export interface Sheet {
 /**
  * So lieu cua MOT LOAI HINH tren toan bo lan ghep.
  *
- * Hai ty le duoi day nhin cung mot thu tu hai phia va KHAC NHAU:
- * - shareOfShapes: trong so trong tong dien tich hinh. Cong het cac loai lai bang 1.
- * - fillRate: chiem bao nhieu phan dien tich giay. Cong het lai bang ty le lap day chung,
- *   phan con thieu chinh la giay bo di.
+ * Con so quan trong nhat la `lengthMm`: mau nay an bao nhieu met cuon. Cong lengthMm cua
+ * moi loai lai dung bang tong chieu dai - phan giay bo di da duoc chia deu vao dau tung
+ * mau theo ty le, vi khong mau nao mot minh gay ra cho trong.
  */
 export interface TypeStats {
   fileId: string
@@ -108,10 +107,8 @@ export interface TypeStats {
   widthMm: number
   heightMm: number
   shapeAreaMm2: number
-  /** Ty le 0..1 tren tong dien tich hinh. */
-  shareOfShapes: number
-  /** Ty le 0..1 tren dien tich giay da dung. */
-  fillRate: number
+  /** Chieu dai cuon mau nay an, da gom ca phan giay bo di chia deu. */
+  lengthMm: number
 }
 
 /** So lieu tong hop cua mot lan ghep. */
