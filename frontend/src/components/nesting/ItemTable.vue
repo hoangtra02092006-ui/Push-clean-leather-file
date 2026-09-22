@@ -10,10 +10,11 @@
  * đúng bằng kích thước ghi trong bảng, để thợ đối chiếu được ngay ở bước 1 thay vì phải
  * chạy ghép xong mới phát hiện app hiểu sai khung hình.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import AppTable from '@/components/ui/AppTable.vue'
 import AppToggle from '@/components/ui/AppToggle.vue'
 import AppBadge from '@/components/ui/AppBadge.vue'
+import FilePreview from '@/components/nesting/FilePreview.vue'
 import { cmToMm, formatCm, parseDecimalInput } from '@/api/units'
 import type { NestItem } from '@/types'
 
@@ -42,22 +43,6 @@ const edited = computed(
         .map((item) => item.fileId),
     ),
 )
-
-/**
- * Hình đang được xem to; `null` là đang đóng khung phóng to.
- */
-const zoomed = ref<NestItem | null>(null)
-
-// Nghe Esc ở cấp cửa sổ: bắt trên chính thẻ <div> chỉ chạy khi nó đang được focus, mà
-// người dùng vừa bấm chuột vào ảnh nên focus vẫn nằm ở nút thu nhỏ.
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    zoomed.value = null
-  }
-}
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 /**
  * Sửa một cạnh thì cạnh kia tự đổi theo, GIỮ NGUYÊN tỷ lệ của hình đã cắt trắng.
@@ -109,14 +94,15 @@ function setQuantity(item: NestItem, raw: string) {
   <AppTable :columns="columns">
     <tr v-for="item in items" :key="item.fileId">
       <td>
-        <button
-          type="button"
-          class="thumb"
-          :title="`Bấm để xem to ${item.label}`"
-          @click="zoomed = item"
-        >
-          <img :src="item.previewUrl" :alt="`Xem trước ${item.label}`" loading="lazy" />
-        </button>
+        <FilePreview :src="item.previewUrl" :label="item.label">
+          <template #caption>
+            {{ formatCm(item.widthMm) }} x {{ formatCm(item.heightMm) }} cm
+            <span v-if="item.trimmed" class="text-mute">
+              · đã bỏ phần trắng bao quanh (khổ gốc
+              {{ formatCm(item.sourceWidthMm) }} x {{ formatCm(item.sourceHeightMm) }} cm)
+            </span>
+          </template>
+        </FilePreview>
       </td>
 
       <td>
@@ -232,39 +218,6 @@ function setQuantity(item: NestItem, raw: string) {
     </tr>
   </AppTable>
 
-  <!--
-    Khung phóng to. Dựng ngay trong component này thay vì một modal dùng chung vì nó chỉ
-    có một việc: phóng to đúng ảnh vừa bấm. Bấm ra ngoài hoặc phím Esc đều đóng được.
-  -->
-  <div
-    v-if="zoomed"
-    class="zoom"
-    role="dialog"
-    aria-modal="true"
-    :aria-label="`Xem trước ${zoomed.label}`"
-    @click.self="zoomed = null"
-  >
-    <div class="zoom__panel">
-      <div class="zoom__head">
-        <strong class="truncate" :title="zoomed.label">{{ zoomed.label }}</strong>
-        <button type="button" class="zoom__close" aria-label="Đóng" @click="zoomed = null">
-          &times;
-        </button>
-      </div>
-
-      <div class="zoom__stage">
-        <img :src="zoomed.previewUrl" :alt="`Xem trước ${zoomed.label}`" />
-      </div>
-
-      <p class="zoom__foot num">
-        {{ formatCm(zoomed.widthMm) }} x {{ formatCm(zoomed.heightMm) }} cm
-        <span v-if="zoomed.trimmed" class="text-mute">
-          · đã bỏ phần trắng bao quanh (khổ gốc
-          {{ formatCm(zoomed.sourceWidthMm) }} x {{ formatCm(zoomed.sourceHeightMm) }} cm)
-        </span>
-      </p>
-    </div>
-  </div>
 </template>
 
 <style scoped>
@@ -278,95 +231,15 @@ function setQuantity(item: NestItem, raw: string) {
   min-width: 3.5rem;
 }
 
-.thumb {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
-  background: var(--c-bg);
-  overflow: hidden;
-  cursor: zoom-in;
-  transition: border-color var(--t-fast);
-}
 
-.thumb:hover {
-  border-color: var(--c-accent);
-}
 
-.zoom {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: var(--s-5);
-  background: rgb(15 23 42 / 55%);
-}
 
-.zoom__panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
-  max-width: min(680px, 90vw);
-  padding: var(--s-4);
-  background: var(--c-surface);
-  border-radius: var(--r-md);
-  box-shadow: var(--sh-2);
-}
 
-.zoom__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-}
 
-.zoom__close {
-  border: none;
-  background: none;
-  color: var(--c-text-soft);
-  font-size: var(--fs-xl);
-  line-height: 1;
-  cursor: pointer;
-}
 
-/* Nền ô carô để thấy rõ đâu là phần trong suốt, đâu là nét trắng của hình. */
-.zoom__stage {
-  display: grid;
-  place-items: center;
-  padding: var(--s-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
-  background-color: var(--c-bg);
-  background-image:
-    linear-gradient(45deg, var(--c-border) 25%, transparent 25%),
-    linear-gradient(-45deg, var(--c-border) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, var(--c-border) 75%),
-    linear-gradient(-45deg, transparent 75%, var(--c-border) 75%);
-  background-size: 14px 14px;
-  background-position: 0 0, 0 7px, 7px -7px, -7px 0;
-}
 
-.zoom__stage img {
-  max-width: 100%;
-  max-height: 60vh;
-  object-fit: contain;
-}
 
-.zoom__foot {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--c-text-soft);
-}
 
-.thumb img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
 
 .name {
   display: block;

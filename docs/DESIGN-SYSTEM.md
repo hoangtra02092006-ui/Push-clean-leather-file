@@ -156,6 +156,12 @@ const columns = [
 
 Header nền `--c-bg`, chữ `--fs-sm`, dính khi cuộn. Hàng có viền dưới 1px, rê chuột đổi nền. Thêm class `col-num` vào `<td>` để căn phải + `tabular-nums`. Bọc sẵn `.scroll-x` nên tự cuộn ngang ở màn hẹp.
 
+### `FilePreview`
+
+Props: `src: string`, `label: string`; slot `caption` cho dòng chú thích dưới ảnh to.
+
+Ô 44px bấm được, mở ảnh to giữa màn hình trên nền ô carô (để phân biệt phần trong suốt với nét trắng của hình). Đóng bằng Esc hoặc bấm ra ngoài. `src` rỗng hoặc ảnh tải hỏng thì **tự ẩn ô đi** thay vì để trình duyệt vẽ icon ảnh vỡ — chuyện này xảy ra thật khi file đã bị dọn sau hạn giữ mà người dùng vẫn đang mở màn hình kết quả cũ.
+
 ### `AppStepper`
 
 Props: `current: number` (1–3). Một bước bấm được khi nó **đủ dữ liệu** (bước 2 cần có hình, bước 3 cần đã chạy một job), chứ không phải khi nó nằm trước bước hiện tại — nhờ vậy có kết quả rồi vẫn nhảy tự do giữa cả ba bước. Bước chưa đủ dữ liệu `disabled` thật.

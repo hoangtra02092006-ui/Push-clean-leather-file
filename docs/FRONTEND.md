@@ -65,7 +65,8 @@ Props chi tiết ở [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md#6-component).
 | `ItemTable` | Bảng hình: sửa kích thước, số lượng, cờ xoay, xoá |
 | `SettingsForm` | Form tham số, validate ngay dưới ô nhập |
 | `SheetPreview` | Vẽ một tấm bằng SVG đúng tỷ lệ, có thước đo và tooltip |
-| `ResultSummary` | Hàng 4 ô số liệu, kèm bảng "từng mẫu ăn mấy mét" — chiều dài cuộn mỗi loại hình ăn, để song song **cm và m** (cm để đối chiếu số đo trên hình, m để cộng tiền), cộng lại bằng tổng chiều dài |
+| `FilePreview` | Ô ảnh 44px bấm vào mở to giữa màn hình. **Dùng chung cho bước 1 và bước 3** — chú thích dưới ảnh do nơi gọi truyền qua slot. Ảnh hỏng (file đã bị dọn) thì tự ẩn ô đi |
+| `ResultSummary` | Hàng 4 ô số liệu, kèm bảng "từng mẫu ăn mấy mét" — có **ảnh xem trước** như bước 1, chiều dài cuộn mỗi loại hình ăn để song song **cm và m** (cm để đối chiếu số đo trên hình, m để cộng tiền), cộng lại bằng tổng chiều dài |
 
 ## 3. Quy ước đơn vị
 

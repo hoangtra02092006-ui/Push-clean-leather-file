@@ -17,6 +17,8 @@ import { computed } from 'vue'
 import AppStatTile from '@/components/ui/AppStatTile.vue'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppTable from '@/components/ui/AppTable.vue'
+import FilePreview from '@/components/nesting/FilePreview.vue'
+import { filePreviewUrl } from '@/api/files'
 import { formatAreaCm2, formatCm, formatCount, formatM, formatPercent } from '@/api/units'
 import { categoryColor } from '@/composables/useCategoryColor'
 import type { NestStats } from '@/types'
@@ -31,6 +33,7 @@ const savedPct = computed(() => props.stats.savedVsIndividualPct.toFixed(1))
 const byType = computed(() => props.stats.byType ?? [])
 
 const columns = [
+  'Xem trước',
   'Hình',
   { label: 'Kích thước (cm)', align: 'right' as const },
   { label: 'Số bản', align: 'right' as const },
@@ -57,6 +60,14 @@ const columns = [
       <AppTable :columns="columns">
         <tr v-for="row in byType" :key="row.categoryIndex">
           <td>
+            <FilePreview :src="filePreviewUrl(row.fileId)" :label="row.label">
+              <template #caption>
+                {{ formatCm(row.widthMm) }} x {{ formatCm(row.heightMm) }} cm ·
+                {{ formatCount(row.pieces) }} bản · {{ formatM(row.lengthMm) }} m
+              </template>
+            </FilePreview>
+          </td>
+          <td>
             <span class="name">
               <span
                 class="swatch"
@@ -78,6 +89,7 @@ const columns = [
           không, thay vì phải tin suông.
         -->
         <tr class="total">
+          <td>&mdash;</td>
           <td>Tổng</td>
           <td class="col-num">&mdash;</td>
           <td class="col-num">{{ formatCount(stats.totalPieces) }}</td>

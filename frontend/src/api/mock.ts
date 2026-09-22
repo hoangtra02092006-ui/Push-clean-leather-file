@@ -30,6 +30,16 @@ import type {
 const CMM = 100
 
 const mockFiles = new Map<string, UploadedFile>()
+
+/**
+ * Duong dan anh xem truoc cua mot file da tai len, tra cuu theo ma file.
+ *
+ * <p>O che do demo khong co may chu nao, anh la mot `blob:` URL sinh ra luc chon file -
+ * khong the suy ra tu ma file nhu ben that duoc, nen phai tra cuu.
+ */
+export function mockPreviewUrl(fileId: string): string {
+  return mockFiles.get(fileId)?.previewUrl ?? ''
+}
 const mockJobs = new Map<string, Job>()
 
 /** Kich thuoc mac dinh khi khong doc duoc gi tu file. */
