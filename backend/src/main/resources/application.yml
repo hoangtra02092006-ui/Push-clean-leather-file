@@ -111,6 +111,65 @@ app:
     # dung dac tinh muc va giay cua may do, nen mau sat hon. Dat duong dan tren dia,
     # hoac "classpath:ten-file.icc" neu bo file vao thu muc resources.
     cmyk-profile: ${APP_TIFF_CMYK_PROFILE:classpath:color/USWebCoatedSWOP.icc}
+  cut:
+    # Xuat file cat cho may cat Graphtec CE7000-60 qua plugin Cutting Master.
+    #
+    # Day la ban PDF VECTOR rieng, chi co duong cat va 4 dau dinh vi. KHONG phai ban in,
+    # khong thay the ban in.
+    #
+    # Do phan giai de do vien, bang dung ban in.
+    #
+    # 300 DPI cho mot diem anh 0,085 mm; xuong 150 DPI thi thanh 0,169 mm - duong cat bam
+    # net kem han o cho co chi tiet nho. Gap doi DPI la gap BON lan so diem phai quet.
+    dpi: ${APP_CUT_DPI:300}
+    # No duong cat ra NGOAI vien lop W1 bao nhieu mm.
+    #
+    # 0 la chay DUNG tren vien do - mac dinh. Day la cai tho nhin thay khi bat kenh W1 len
+    # trong Photoshop, va cung la cai tho yeu cau.
+    #
+    # No them thi duong cat phinh ra: do tren mot ban in that, 0,5 mm lam vung cat to
+    # them 54%, con 1,5 mm to them 135% va cac net chu manh dinh vao nhau.
+    offset-mm: ${APP_CUT_OFFSET_MM:0.0}
+    # Sai so cho phep khi bot dinh cua duong cat.
+    simplify-mm: ${APP_CUT_SIMPLIFY_MM:0.1}
+    # Bo qua mang nho hon muc nay.
+    #
+    # Chi de loc HAT BUI - diem le do khu rang cua sinh ra. Mot diem anh o 300 DPI la
+    # 0,007 mm2, nen 0,2 mm2 da du rong. Dat cao hon la an vao chu that: dong chu nho
+    # "NGUYEN BAN TRA VIET" tren ban in cua xuong chi co vai phan muoi mm2 moi chu.
+    min-area-mm2: ${APP_CUT_MIN_AREA_MM2:0.2}
+    # Do day net duong cat, don vi point.
+    stroke-pt: ${APP_CUT_STROKE_PT:0.25}
+    # Ten mau muc rieng cua duong cat. Illustrator va Cutting Master deu nhan dang duong
+    # cat bang TEN nay, nen go sai la may cat khong thay duong nao.
+    spot-name: ${APP_CUT_SPOT_NAME:CutContour}
+    mark:
+      # Dau dinh vi o 4 goc, kieu "Graphtec 4 Points Type 1".
+      # Ba so nay doc tu anh chup man hinh Cutting Master cua xuong.
+      length-mm: ${APP_CUT_MARK_LENGTH_MM:10.0}
+      thickness-mm: ${APP_CUT_MARK_THICKNESS_MM:1.0}
+      # Hinh dau khai RIENG cho tung goc, de sau nay doi mot goc khong keo theo ba goc kia.
+      # Mac dinh ca bon deu SQUARE_WITH_EDGE.
+      #
+      # Cac kieu ve duoc:
+      #   SQUARE_WITH_EDGE  hai net o hai canh PHIA TRONG, khep o vuong cung mep trang
+      #   L                 hai canh gap goc, op vao dung hai mep trang
+      #   SQUARE_OUTLINE    o vuong ve du bon canh, giua de trong
+      #   SQUARE_FILLED     o vuong to day
+      #
+      # SQUARE_WITH_EDGE chi ve HAI net; hai canh con lai cua o vuong chinh la hai mep
+      # giay o goc do. May cat nhin ra o vuong khep kin va hieu day la moc vung cat.
+      #
+      # Khong co file PDF mau de doi chieu tung milimet, nen neu may cat do khong ra dau
+      # thi sua o day chu khong phai sua code.
+      top-left: ${APP_CUT_MARK_TOP_LEFT:SQUARE_WITH_EDGE}
+      top-right: ${APP_CUT_MARK_TOP_RIGHT:SQUARE_WITH_EDGE}
+      bottom-left: ${APP_CUT_MARK_BOTTOM_LEFT:SQUARE_WITH_EDGE}
+      bottom-right: ${APP_CUT_MARK_BOTTOM_RIGHT:SQUARE_WITH_EDGE}
+      # Vung trong BAT BUOC quanh dau. Co hinh lan vao day thi camera cua may do nham dau,
+      # nen gap truong hop do thi TU CHOI xuat file - tha bao loi con hon dua ra mot file
+      # chac chan hong khi chay may.
+      clearance-mm: ${APP_CUT_MARK_CLEARANCE_MM:5.0}
   cors:
     # Origin cua frontend. Tren Netlify/Render nho them dung ten mien da cap.
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}

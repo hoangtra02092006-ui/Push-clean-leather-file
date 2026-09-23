@@ -126,7 +126,7 @@ Chờ tới khi thấy dòng `Started PrintNestApplication`. Backend chạy ở 
 
 Thư mục lưu file tạm mặc định là `backend/storage/` (đã nằm trong `.gitignore`).
 
-Chạy toàn bộ test (102 test):
+Chạy toàn bộ test (121 test):
 
 ```bash
 cd backend
@@ -199,6 +199,16 @@ npm run build
 | `APP_TIFF_WHITE_ALPHA_THRESHOLD` | `128` | Ngưỡng alpha 0..255: trên ngưỡng thì coi là có hình, cần lót trắng |
 | `APP_TIFF_WHITE_CHOKE` | `1` | Số điểm ảnh co lớp trắng vào trong mỗi phía, để nó nằm **lọt** trong lớp màu. Bằng đúng thao tác `Select → Modify → Contract → 1` |
 | `APP_TIFF_WHITE_TOLERANCE` | `6` | Độ lệch cho phép so với trắng tuyệt đối khi dò nền của ảnh không có kênh trong suốt |
+| `APP_CUT_DPI` | `300` | Độ phân giải để dò viền cắt, bằng đúng bản in. Gấp đôi DPI là gấp **bốn** lần số điểm phải quét |
+| `APP_CUT_OFFSET_MM` | `0.0` | Nở đường cắt ra **ngoài viền lớp W1** bao nhiêu mm. `0` = chạy đúng trên viền đó |
+| `APP_CUT_SIMPLIFY_MM` | `0.1` | Sai số cho phép khi bớt đỉnh của đường cắt |
+| `APP_CUT_MIN_AREA_MM2` | `0.2` | Bỏ qua mảng nhỏ hơn mức này. **Chỉ để lọc hạt bụi** (một điểm ảnh ở 300 DPI là 0,007 mm²). Đặt cao hơn là ăn mất chữ nhỏ |
+| `APP_CUT_STROKE_PT` | `0.25` | Độ dày nét đường cắt |
+| `APP_CUT_SPOT_NAME` | `CutContour` | Tên màu mực riêng. Illustrator và Cutting Master nhận dạng đường cắt bằng **tên** này |
+| `APP_CUT_MARK_LENGTH_MM` | `10.0` | Chiều dài cạnh dấu định vị |
+| `APP_CUT_MARK_THICKNESS_MM` | `1.0` | Độ dày nét dấu |
+| `APP_CUT_MARK_TOP_LEFT` · `_TOP_RIGHT` · `_BOTTOM_LEFT` · `_BOTTOM_RIGHT` | `SQUARE_WITH_EDGE` | Hình dấu **từng góc**. `SQUARE_WITH_EDGE` vẽ hai nét ở hai cạnh phía trong, khép ô vuông cùng mép trang. Còn nhận `L`, `SQUARE_OUTLINE`, `SQUARE_FILLED` |
+| `APP_CUT_MARK_CLEARANCE_MM` | `5.0` | Vùng trống bắt buộc quanh dấu. Cộng với dấu là **15 mm** mỗi góc. Có nét vẽ lấn vào thì **từ chối xuất file cắt** — đặt lề ≥ 15 mm cho chắc |
 
 ---
 

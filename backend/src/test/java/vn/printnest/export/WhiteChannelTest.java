@@ -21,6 +21,18 @@ class WhiteChannelTest {
     private static final int INK = 255;
     private static final int NONE = 0;
 
+    /**
+     * Mat na muc trang: do vung phu roi co vao trong.
+     *
+     * <p>Ghep hai buoc o day chu khong o {@code WhiteChannel}, vi ban CAT can vung phu
+     * CHUA co vao nen ben do goi tung buoc rieng.
+     */
+    private static byte[] whiteMask(BufferedImage image, int threshold, int choke,
+                                    int whiteTolerance) {
+        return WhiteChannel.choke(WhiteChannel.coverage(image, threshold, whiteTolerance),
+                image.getWidth(), image.getHeight(), choke);
+    }
+
     /** Gia tri mat na tai mot diem, doi sang 0..255 cho de doc. */
     private static int at(byte[] mask, int width, int x, int y) {
         return mask[y * width + x] & 0xFF;
@@ -35,7 +47,7 @@ class WhiteChannelTest {
         g.fillRect(5, 5, 10, 10);
         g.dispose();
 
-        byte[] mask = WhiteChannel.build(image, 128, 0, 6);
+        byte[] mask = whiteMask(image, 128, 0, 6);
 
         assertThat(at(mask, 20, 10, 10)).as("giua hinh").isEqualTo(INK);
         assertThat(at(mask, 20, 1, 1)).as("goc trong suot").isEqualTo(NONE);
@@ -61,7 +73,7 @@ class WhiteChannelTest {
         g.fillRect(16, 16, 8, 8);
         g.dispose();
 
-        byte[] mask = WhiteChannel.build(image, 128, 0, 10);
+        byte[] mask = whiteMask(image, 128, 0, 10);
 
         assertThat(at(mask, 40, 20, 20))
                 .as("o vuong trang giua logo phai duoc lot trang")
@@ -84,7 +96,7 @@ class WhiteChannelTest {
         g.fillOval(8, 8, 14, 14);
         g.dispose();
 
-        byte[] mask = WhiteChannel.build(image, 128, 0, 10);
+        byte[] mask = whiteMask(image, 128, 0, 10);
 
         assertThat(at(mask, 30, 15, 15)).as("giua hinh tron").isEqualTo(INK);
         assertThat(at(mask, 30, 0, 0)).as("goc nen").isEqualTo(NONE);
@@ -105,7 +117,7 @@ class WhiteChannelTest {
         g.fillRect(10, 10, 20, 20);
         g.dispose();
 
-        byte[] mask = WhiteChannel.build(image, 128, 2, 6);
+        byte[] mask = whiteMask(image, 128, 2, 6);
 
         assertThat(at(mask, 40, 10, 20)).as("dung mep trai cua hinh").isEqualTo(NONE);
         assertThat(at(mask, 40, 11, 20)).as("vao trong 1 diem").isEqualTo(NONE);
@@ -128,7 +140,7 @@ class WhiteChannelTest {
         g.fillRect(0, 0, 20, 20);
         g.dispose();
 
-        byte[] mask = WhiteChannel.build(image, 128, 2, 6);
+        byte[] mask = whiteMask(image, 128, 2, 6);
 
         assertThat(at(mask, 20, 0, 10)).as("dung mep tam").isEqualTo(NONE);
         assertThat(at(mask, 20, 1, 10)).as("vao trong 1 diem").isEqualTo(NONE);
@@ -151,7 +163,7 @@ class WhiteChannelTest {
         g.fillRect(10, 10, 20, 20);
         g.dispose();
 
-        byte[] mask = WhiteChannel.build(image, 128, 1, 6);
+        byte[] mask = whiteMask(image, 128, 1, 6);
 
         assertThat(at(mask, 40, 10, 20)).as("dung mep hinh: da bi co").isEqualTo(NONE);
         assertThat(at(mask, 40, 11, 20)).as("vao trong 1 diem: co muc").isEqualTo(INK);
@@ -169,9 +181,9 @@ class WhiteChannelTest {
             }
         }
 
-        assertThat(at(WhiteChannel.build(image, 50, 0, 6), 10, 5, 5))
+        assertThat(at(whiteMask(image, 50, 0, 6), 10, 5, 5))
                 .as("alpha 100 > nguong 50").isEqualTo(INK);
-        assertThat(at(WhiteChannel.build(image, 150, 0, 6), 10, 5, 5))
+        assertThat(at(whiteMask(image, 150, 0, 6), 10, 5, 5))
                 .as("alpha 100 < nguong 150").isEqualTo(NONE);
     }
 

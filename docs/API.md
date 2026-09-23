@@ -280,20 +280,22 @@ Chia cho tỷ lệ lấp đầy chính là để **tính cả phần giấy bỏ
 
 ---
 
-## 5. `GET .../sheets/{index}/pdf` và `.../sheets/{index}/tif` — Tải một tấm
+## 5. `GET .../sheets/{index}/pdf`, `.../tif` và `.../cut` — Tải một tấm
 
-Hai định dạng, **cùng một bố trí**: cả hai đều dựng lại từ `PdfComposer` nên không thể lệch nhau.
+Ba định dạng, **cùng một bố trí**: cả ba đều dựng lại từ `PdfComposer` nên không thể lệch nhau.
 
 | Đuôi | Trả về | Dùng khi |
 |---|---|---|
 | `/pdf` | `application/pdf` | Giữ nguyên vector, nét sắc ở mọi mức phóng |
 | `/tif` | `image/tiff` (nén Deflate, CMYK + kênh mực trắng `W1`) | RIP chỉ nhận ảnh bitmap |
+| `/cut` | `application/pdf` (đường cắt + 4 dấu định vị) | Sau khi in xong, gửi sang máy cắt Graphtec |
 
 Tên file có sẵn kích thước để thợ không phải mở ra kiểm tra:
 
 ```
 minh-tri-a7e3f019-tam01-57x100cm.pdf
 minh-tri-a7e3f019-tam01-57x100cm.tif
+minh-tri-a7e3f019-tam01-57x100cm-cat.pdf
 ```
 
 `index` bắt đầu từ **0**.
@@ -445,6 +447,82 @@ Ghi metadata hỏng thì **từ chối phát hành file** chứ không phát hà
 
 **Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`, `TIFF_TOO_LARGE`.
 
+### Về bản CẮT
+
+Bản cắt là **PDF vector riêng**, chỉ chứa đường cắt quanh mỗi hình và 4 dấu định vị ở góc. Nó **không phải bản in và không thay thế bản in**: thợ in bản TIF ra phim, rồi mở bản cắt bằng Illustrator/CorelDRAW và gửi sang máy cắt **Graphtec CE7000-60** qua plugin Cutting Master.
+
+**Cách dựng — chính là viền của lớp W1.** Vẽ lại tấm từ `PdfComposer` (luôn **tắt** đường cắt quanh hình — bật lên thì đường cắt sẽ đi vòng quanh cái khung xám chứ không quanh hình), rồi dựng **đúng vùng phủ của kênh mực trắng W1** và dò viền của nó.
+
+> Dùng chung `WhiteChannel.coverage()` với bản TIF, lấy luôn `app.tiff.white.*` làm tham số — **một chỗ định nghĩa duy nhất**. Nhờ vậy đường cắt chạy đúng trên viền lớp W1: mở file TIF trong Photoshop, bật kênh W1 lên, thấy viền ở đâu thì máy cắt đi ở đó.
+
+> **Nhưng KHÔNG lấy bản đã co vào.** Kênh W1 co vào trong 1 điểm ảnh để lớp trắng nằm lọt trong lớp màu. Đem bản đã co đi cắt thì **nét mảnh bị xoá sạch**: một nét dày 2 điểm ảnh mà co mỗi bên 1 điểm là đứt thành từng chấm rời rạc. Đo trên một bản in của xưởng: dòng chữ nhỏ `NGUYÊN BẢN TRÀ VIỆT` vỡ thành **59 chấm 0,007 mm²** — đúng bằng một điểm ảnh — rồi bị bước lọc bụi dọn sạch, mất hẳn khỏi file cắt.
+
+Viền **ngoài và viền lỗ bên trong** đều được cắt, đúng như khi stroke một selection quanh layer trong Photoshop — nhờ đó ruột chữ `o`, `a`, `ê` được khoét và chữ đọc rõ.
+
+Mảng nhỏ hơn `APP_CUT_MIN_AREA_MM2` (mặc định **0,2 mm²**) bị bỏ. Ngưỡng này **chỉ để lọc hạt bụi** — điểm lẻ do khử răng cưa sinh ra, mỗi cái 0,007 mm². Đặt cao hơn là ăn vào chữ thật: dòng địa chỉ nhỏ trên nhãn chỉ vài phần mười mm² mỗi chữ.
+
+Đường cắt tô bằng **K100** cho giống cái thợ nhìn trong Cutting Master. Màu này chỉ để nhìn — máy cắt nhận dạng đường cắt bằng **tên** màu mực riêng.
+
+`APP_CUT_OFFSET_MM` mặc định **0** — chạy đúng trên viền W1. Đặt lớn hơn thì đường cắt nới ra ngoài, nhưng đo trên một bản in thật: 0,5 mm làm vùng cắt to thêm **54%**, 1,5 mm to thêm **135%** và các nét chữ mảnh dính vào nhau.
+
+**Cấu trúc file:**
+
+| | |
+|---|---|
+| Kích thước trang | **Đúng bằng bản in**, lấy từ `Sheet` chứ không quy ngược từ số điểm ảnh |
+| Lớp `CutContour` | Đường cắt, nét 0,25 pt, **màu mực riêng** tên `CutContour`, không tô nền |
+| Lớp `RegMarks` | 4 dấu định vị, tô đặc K100 |
+| Dấu định vị | Cạnh **10,00 mm**, dày **1,00 mm**, góc ngoài đặt **đúng 4 góc trang** |
+| Hình dấu | Khai **riêng từng góc**. Mặc định cả bốn góc là `SQUARE_WITH_EDGE` |
+
+**`SQUARE_WITH_EDGE` chỉ vẽ HAI nét** — hai cạnh còn lại của ô vuông chính là hai mép giấy ở góc đó. Máy cắt nhìn ra một ô vuông khép kín và hiểu đó là mốc vùng cắt:
+
+```
+góc dưới-trái:
+
+  mép trái │
+           │   . . . . . █      nét dọc  cách mép trái 10 mm
+           │   . . . . . █
+           │   █████████ █  ←   nét ngang cách mép dưới 10 mm
+           └────────────────
+              mép dưới
+```
+
+| Giá trị | Vẽ gì |
+|---|---|
+| `SQUARE_WITH_EDGE` | Hai nét ở hai cạnh **phía trong**, khép ô vuông cùng mép trang |
+| `L` | Hai cạnh gặp góc, **ốp vào** đúng hai mép trang |
+| `SQUARE_OUTLINE` | Ô vuông vẽ đủ bốn cạnh, giữa để trống |
+| `SQUARE_FILLED` | Ô vuông tô đặc |
+
+> **Để trong config vì chưa xác nhận được trên máy thật.** Không có file PDF mẫu để đo từng milimet, nên cả bốn góc đều đặt bằng biến môi trường: máy cắt đo không ra dấu thì sửa một dòng, không phải sửa code.
+
+> Illustrator và Cutting Master nhận dạng đường cắt bằng **tên** màu mực, không phải bằng màu hiển thị. Màu thay thế (K100) chỉ để nhìn trên màn hình.
+
+#### ⚠️ Bốn góc tấm phải trống 15 mm
+
+Dấu chiếm 10 mm, cộng 5 mm vùng trống bắt buộc quanh nó là **15 mm** ở mỗi góc. Có nét vẽ lấn vào đó thì camera của máy cắt đo nhầm dấu và chạy lệch cả tấm phim — nên hệ thống **từ chối xuất file cắt** và trả `CUT_MARK_AREA_BUSY` (422) kèm hướng xử lý.
+
+Phép chặn soi **nét vẽ thật**, không soi khung bao. Nên kết quả phụ thuộc hình:
+
+| Loại hình | Lề 5 mm (mặc định) |
+|---|---|
+| Nhãn chữ nhật tô đặc | **Chặn** — mực chạm ngay vào góc |
+| Nét vẽ có góc trống (hoa lá, chữ) | Thường vẫn qua, vì góc tấm không có mực |
+
+Muốn chắc chắn cắt được với mọi hình thì ở bước 2 đặt **lề ≥ 15 mm**. Bản in PDF và TIF không vướng giới hạn này — chỉ riêng bản cắt.
+
+#### Cách kiểm thật trước khi chạy máy
+
+Chưa có file PDF mẫu để đối chiếu từng milimet, nên mọi thông số đọc từ ảnh chụp màn hình Cutting Master. Cách nghiệm thu:
+
+1. Chạy `./mvnw test -Dtest=CutExportIntegrationTest` — sinh ảnh `backend/target/cut-check/chong-len-nhau.png` chồng bản in và bản cắt lên nhau (đỏ = đường cắt, xanh = dấu định vị). Nhìn xem đường cắt có bao ngoài hình và không cắt vào nét nào.
+2. Đọc log khi tải file: `CutComposer` ghi ra kích thước trang và toạ độ 4 dấu tính bằng mm.
+3. Mở PDF bằng Illustrator → Cutting Master → Cut/Plot. **So Job size và vị trí dấu** với hai con số ở bước 2.
+4. Cắt thử **một tấm nhỏ trên phim thừa** trước khi chạy đơn thật.
+
+Lệch thì chỉnh `APP_CUT_*` — không phải sửa code.
+
 ---
 
 ## 6. `GET /api/v1/nesting/jobs/{jobId}/export.zip` — Tải tất cả
@@ -453,16 +531,17 @@ Trả về file `.zip` chứa toàn bộ các tấm, tên file bên trong giốn
 
 | Tham số | Mặc định | Giá trị |
 |---|---|---|
-| `format` | `pdf` | `pdf` hoặc `tif` |
+| `format` | `pdf` | `pdf`, `tif` hoặc `cut` |
 
 ```
 GET .../export.zip            -> minh-tri-a7e3f019-pdf.zip
 GET .../export.zip?format=tif -> minh-tri-a7e3f019-tif.zip
+GET .../export.zip?format=cut -> minh-tri-a7e3f019-cut.zip
 ```
 
 Định dạng lạ bị **báo lỗi ngay** chứ không lặng lẽ trả về PDF — trả nhầm định dạng thì thợ chỉ phát hiện khi file đã ở trên máy in.
 
-**Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`, `INVALID_REQUEST`, `TIFF_TOO_LARGE`.
+**Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`, `INVALID_REQUEST`, `TIFF_TOO_LARGE`, `CUT_MARK_AREA_BUSY`.
 
 ---
 
@@ -492,6 +571,7 @@ Mọi lỗi đều trả về cùng một cấu trúc:
 | `JOB_NOT_READY` | 409 | Job chưa chạy xong nên chưa có gì để tải |
 | `NESTING_FAILED` | 500 | Thuật toán không hội tụ hoặc số lượng bị lệch |
 | `TIFF_TOO_LARGE` | 422 | Tấm quá lớn để dựng TIF ở độ phân giải đang đặt. Giảm `APP_TIFF_DPI` hoặc đặt chiều dài tối đa mỗi file ngắn lại |
+| `CUT_MARK_AREA_BUSY` | 422 | Có hình lấn vào chỗ phải để trống cho dấu định vị ở góc tấm. Đặt lề ≥ 15 mm rồi ghép lại. **Chỉ chặn bản cắt** — bản in PDF và TIF vẫn tải được |
 | `INTERNAL_ERROR` | 500 | Lỗi không lường trước. Stack trace chỉ ghi vào log, không lộ ra ngoài |
 
 Frontend phân nhánh theo `error.code`, **không** parse chuỗi `message`.

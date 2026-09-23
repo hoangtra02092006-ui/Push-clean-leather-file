@@ -23,8 +23,8 @@ import java.util.zip.ZipOutputStream;
  * Tai file thanh pham cua mot lan ghep.
  *
  * <p>Hai dinh dang, cung mot bo tri: PDF giu nguyen vector, TIF la anh bitmap cho nhung
- * RIP chi nhan anh. Ca hai deu dung lai {@link PdfComposer} nen khong the lech nhau -
- * TIF chi la ban PDF do duoc ve ra thanh diem anh.
+ * RIP chi nhan anh, va CUT la duong cat vector cho may cat Graphtec. Ca ba deu dung lai
+ * {@link PdfComposer} nen khong the lech nhau.
  */
 @RestController
 @RequestMapping("/api/v1/nesting/jobs/{jobId}")
@@ -44,13 +44,16 @@ public class ExportController {
     private final NestingService nestingService;
     private final PdfComposer composer;
     private final TiffComposer tiffComposer;
+    private final CutComposer cutComposer;
     private final ExportCache cache;
 
     public ExportController(NestingService nestingService, PdfComposer composer,
-                            TiffComposer tiffComposer, ExportCache cache) {
+                            TiffComposer tiffComposer, CutComposer cutComposer,
+                            ExportCache cache) {
         this.nestingService = nestingService;
         this.composer = composer;
         this.tiffComposer = tiffComposer;
+        this.cutComposer = cutComposer;
         this.cache = cache;
     }
 
@@ -61,10 +64,27 @@ public class ExportController {
      * deu bi dung lai lan thu hai, ma mot ban TIF mat vai giay.
      */
     private byte[] build(Job job, Sheet sheet, String ext, boolean cutLines) {
-        return cache.get(job.jobId(), sheet.index(), ext,
-                () -> "tif".equals(ext)
-                        ? tiffComposer.compose(sheet, cutLines)
-                        : composer.compose(sheet, cutLines));
+        return cache.get(job.jobId(), sheet.index(), ext, () -> switch (ext) {
+            case "tif" -> tiffComposer.compose(sheet, cutLines);
+            // File cat khong nhan cutLines: khung xam quanh hinh ma bat len thi duong cat
+            // se di vong quanh cai khung chu khong quanh hinh.
+            case "cut" -> cutComposer.compose(sheet);
+            default -> composer.compose(sheet, cutLines);
+        });
+    }
+
+    /** Tai file CAT cua mot tam, dinh dang PDF vector cho may cat Graphtec. */
+    @GetMapping("/sheets/{index}/cut")
+    public ResponseEntity<byte[]> sheetCut(@PathVariable String jobId, @PathVariable int index) {
+        Job job = nestingService.requireDone(jobId);
+        Sheet sheet = sheetAt(job, index);
+        byte[] cut = build(job, sheet, "cut", false);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + fileName(job, sheet, "cut") + "\"")
+                .body(cut);
     }
 
     /** Tai PDF cua mot tam. */
@@ -98,7 +118,7 @@ public class ExportController {
     /**
      * Tai tat ca cac tam trong mot file .zip.
      *
-     * @param format {@code pdf} (mac dinh) hoac {@code tif}
+     * @param format {@code pdf} (mac dinh), {@code tif} hoac {@code cut}
      */
     @GetMapping("/export.zip")
     public ResponseEntity<byte[]> exportAll(
@@ -127,12 +147,12 @@ public class ExportController {
                 .body(buffer.toByteArray());
     }
 
-    /** Chi nhan dung hai dinh dang; go nham thi bao ngay chu khong lang le tra ve PDF. */
+    /** Chi nhan dung ba dinh dang; go nham thi bao ngay chu khong lang le tra ve PDF. */
     private String normaliseFormat(String format) {
         String ext = format == null ? "pdf" : format.trim().toLowerCase(java.util.Locale.ROOT);
-        if (!"pdf".equals(ext) && !"tif".equals(ext)) {
+        if (!"pdf".equals(ext) && !"tif".equals(ext) && !"cut".equals(ext)) {
             throw new ApiException(ErrorCode.INVALID_REQUEST,
-                    "Dinh dang \"" + format + "\" khong ho tro. Chi nhan pdf hoac tif.");
+                    "Dinh dang \"" + format + "\" khong ho tro. Chi nhan pdf, tif hoac cut.");
         }
         return ext;
     }
@@ -146,12 +166,19 @@ public class ExportController {
         return sheets.get(index);
     }
 
-    /** Ten file mang san kich thuoc de tho khong phai mo ra kiem tra. */
+    /**
+     * Ten file mang san kich thuoc de tho khong phai mo ra kiem tra.
+     *
+     * <p>File cat cung la PDF nhung phai deo them chu {@code -cat}: de trung ten voi ban in
+     * thi hai file nam canh nhau trong thu muc Tai ve, tho bam nham la day ban cat xuong
+     * may in hoac day ban in xuong may cat.
+     */
     private String fileName(Job job, Sheet sheet, String ext) {
         long widthCm = Math.round(sheet.widthMm() / 10d);
         long lengthCm = Math.round(sheet.lengthMm() / 10d);
-        return String.format("%s-%s-tam%02d-%dx%dcm.%s",
-                BRAND, shortId(job.jobId()), sheet.index() + 1, widthCm, lengthCm, ext);
+        String suffix = "cut".equals(ext) ? "-cat.pdf" : "." + ext;
+        return String.format("%s-%s-tam%02d-%dx%dcm%s",
+                BRAND, shortId(job.jobId()), sheet.index() + 1, widthCm, lengthCm, suffix);
     }
 
     private String shortId(String jobId) {

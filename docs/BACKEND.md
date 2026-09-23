@@ -218,7 +218,7 @@ Toàn bộ tính bằng **số nguyên đơn vị 1/100 mm**. Không có phép c
 
 ```bash
 cd backend
-./mvnw clean verify                            # toàn bộ 102 test
+./mvnw clean verify                            # toàn bộ 121 test
 ./mvnw test -Dtest=NestingEngineTest           # thuật toán (10)
 ./mvnw test -Dtest=PdfContentBoxFinderTest     # đọc vector tìm hộp bao (6)
 ./mvnw test -Dtest=TrimWhitespaceIntegrationTest  # cắt khoảng trắng (5)
