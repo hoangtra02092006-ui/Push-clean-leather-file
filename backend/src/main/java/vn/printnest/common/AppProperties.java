@@ -11,9 +11,11 @@ import java.util.List;
  * @param cors      cau hinh CORS
  * @param trim      cau hinh cat khoang trang quanh hinh
  * @param retention cau hinh don rac
+ * @param tiff      cau hinh xuat file TIF
  */
 @ConfigurationProperties(prefix = "app")
-public record AppProperties(Storage storage, Cors cors, Trim trim, Retention retention) {
+public record AppProperties(Storage storage, Cors cors, Trim trim, Retention retention,
+                            Tiff tiff) {
 
     /**
      * @param path        thu muc luu file tam tren dia
@@ -54,5 +56,20 @@ public record AppProperties(Storage storage, Cors cors, Trim trim, Retention ret
         public boolean enabled() {
             return hours > 0;
         }
+    }
+
+    /**
+     * Xuat ban TIF.
+     *
+     * <p>TIF la anh bitmap nen phai chot truoc do phan giai, va do phan giai quyet dinh
+     * toan bo chi phi: mot tam 57 x 100 cm o 150 DPI la 20 trieu diem (80 MB trong bo
+     * nho), o 300 DPI thanh 80 trieu diem (318 MB). Gap doi DPI la gap BON lan bo nho.
+     *
+     * @param dpi            do phan giai. Hoi RIP cua xuong can bao nhieu roi dat lai;
+     *                       150 la muc pho bien cho in kho lon vi nguoi xem dung xa
+     * @param maxMegapixels  tran cung: tam lon hon muc nay thi bao loi ro rang thay vi de
+     *                       may chu het bo nho roi tu khoi dong lai
+     */
+    public record Tiff(int dpi, int maxMegapixels) {
     }
 }

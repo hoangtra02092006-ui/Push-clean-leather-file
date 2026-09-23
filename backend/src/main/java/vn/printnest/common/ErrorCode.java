@@ -29,6 +29,9 @@ public enum ErrorCode {
     /** Thuat toan that bai vi ly do khong luong truoc. */
     NESTING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR),
     /** Loi khong xac dinh. */
+    /** Tam qua lon de raster hoa thanh TIFF o do phan giai dang dat. */
+    TIFF_TOO_LARGE(HttpStatus.UNPROCESSABLE_ENTITY),
+
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final HttpStatus status;
