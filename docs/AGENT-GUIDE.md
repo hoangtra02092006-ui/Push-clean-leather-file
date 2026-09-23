@@ -33,6 +33,9 @@ Chi tiết từng tầng: [BACKEND.md](BACKEND.md) · [FRONTEND.md](FRONTEND.md)
 | Đổi cách cắt khoảng trắng quanh hình | `PdfContentBoxFinder.java` → `FileMetadataReader.findContentBox()` → `PdfComposer.drawPdf()` (phải đi cùng nhau) |
 | Đổi cách xếp lồng theo hình thật | `OccupancyMask.java` → `CavityFinder.java` → `NestingService.cavitiesFor()` → `MaxRectsPacker.addCavities()` |
 | Đổi cách xuất PDF | `backend/.../export/PdfComposer.java` |
+| Đổi cách xuất TIF | `backend/.../export/TiffComposer.java` + `WhiteChannel.java` (kênh W1) + `PhotoshopLayers.java` (lớp trong suốt) |
+| Đổi cách xuất file CẮT | `backend/.../export/CutComposer.java` (dấu định vị, ghi PDF) + `CutContours.java` (dò viền, giản lược đỉnh) |
+| Thêm định dạng tải mới | `ExportController` (endpoint + `normaliseFormat` + `fileName`) → `api/nesting.ts` (`ExportFormat`) → `NestResultView.vue` → `API.md` |
 | Thêm endpoint mới | Controller trong package nghiệp vụ tương ứng → `frontend/src/api/*.ts` → `API.md` |
 | Đổi giao diện một màn | `frontend/src/views/*.vue` |
 | Đổi component dùng chung | `frontend/src/components/ui/App*.vue` + `DESIGN-SYSTEM.md` |
@@ -103,6 +106,11 @@ Sau mỗi lần đổi schema, chạy lại kịch bản demo ở mục 6.
 | Cho `ColorConvertOp` ghi vào raster có **bước nhảy** khác số kênh | Nó bỏ qua bước nhảy, vẫn dồn 4 byte liền nhau → chỉ lấp 4/5 vùng nhớ, ảnh ra sọc ngang. Đo trên ảnh một màu đặc: 165.376/206.720 điểm có mực | Chuyển màu vào ảnh 4 kênh liền mạch rồi **chép** sang mảng 5 kênh; xem `TiffComposer.interleave()` |
 | Để `ColorConvertOp` tự xử lý kênh alpha | Cùng một điểm `0x00000000` cho hai kết quả khác nhau tuỳ **kích thước ảnh** (ảnh 1×1 ra đen đặc, ảnh 8×4 ra trắng) → khoảng trống quanh hình có thể bị đổ đầy mực đen | Tự đặt ảnh lên nền trắng trước (`flattenOntoWhite`), để alpha thành vô can |
 | Đoán chiều giá trị của kênh mực riêng (spot channel) | Photoshop ghi **ngược** với CMYK: 0 mới là có mực trắng. Đoán sai thì lớp trắng ra âm bản — phun trắng vào chỗ trống, bỏ trống chỗ có hình. File vẫn mở bình thường, chỉ lộ khi mực đã lên áo | Đọc thẳng điểm ảnh của file mẫu làm tay, đừng suy luận; xem `WhiteChannel.writeSpotBand()` |
+| Dùng mặt nạ W1 **đã co** để dò đường cắt | Phép co 1 điểm ảnh làm nét mảnh **đứt thành từng chấm một điểm**, rồi bước lọc hạt bụi dọn sạch → chữ nhỏ biến mất hẳn khỏi file cắt. Đo thật: dòng chữ nhỏ vỡ thành 59 chấm 0,007 mm² | Cắt thì dùng `WhiteChannel.coverage()` (chưa co); phép co chỉ dành cho lớp lót trắng |
+| Đặt ngưỡng lọc mảng nhỏ theo cảm tính | 4 mm² nghe "nhỏ" nhưng ăn mất cả dòng địa chỉ trên nhãn. Một điểm ảnh ở 300 DPI chỉ 0,007 mm² | Đo phân bố diện tích thật rồi mới chọn; 0,2 mm² đã đủ lọc hạt bụi |
+| Nới đường cắt bằng cách đẩy đa giác ra ngoài (polygon offset) | Phải tự xử lý góc lõm, cạnh tự cắt chính nó, và hai hình sát nhau thì hai đường đâm vào nhau — máy cắt đi lung tung ở chỗ giao | **Nở trên mặt nạ** rồi mới dò viền: ba chuyện đó tự hết, và hai hình sát nhau tự dính thành một khối — đúng hành vi mong muốn |
+| Đưa đường vừa dò thẳng vào Douglas-Peucker | Dò viền theo cạnh điểm ảnh cho ra đường toàn đoạn dài **một** điểm; một viền ở 300 DPI thành hàng trăm nghìn đỉnh, mà DP có trường hợp xấu O(n²) → treo máy | Gộp các đỉnh thẳng hàng trước bằng một lượt O(n). Chính xác tuyệt đối, và cắt số đỉnh xuống vài nghìn |
+| Thêm dấu định vị 10 mm vào góc tấm mà quên lề tấm chỉ 5 mm | Dấu cộng vùng trống là 15 mm, nên hình **luôn** lấn vào góc → chức năng cắt không bao giờ xuất được với tham số mặc định | Chặn ở `CutComposer.guardMarkZones()` và báo đúng số mm cần đặt lề. Đừng lặng lẽ vẽ đè dấu lên hình |
 | Ghi thẳng giá trị ảnh gộp vào kênh CMYK của **lớp** PSD | PSD lưu CMYK **lật ngược** (0 = mực đầy), ảnh gộp TIFF thì không (0 = không mực). Hình màu kem bị đọc thành đen đặc. Ảnh gộp vẫn đúng nên mọi phép kiểm số liệu trên ảnh gộp đều xanh — chỉ mở file ra nhìn mới thấy, và rất dễ tưởng là lỗi chuyển màu | Lật `255 - giá trị` cho bốn kênh màu của lớp; **kênh trong suốt thì không lật**. Đo trên file mẫu: ảnh gộp + lớp luôn tròn 255 |
 | Giả định mọi khối Photoshop trong TIFF đều là byte lớn trước | Khối `34377` **luôn** lớn trước, còn `37724` đi theo thứ tự byte của file TIFF bao quanh. Đọc nhầm thì chữ ký ra `"MIB8"`, `"ryaL"` và mọi độ dài thành số hàng trăm triệu | Đọc thứ tự byte từ header TIFF rồi áp cho khối `37724`; `34377` thì cố định lớn trước |
 | Viết `p.position(p.position() + p.getInt())` | Java lấy `p.position()` **trước** khi `getInt()` đẩy con trỏ đi 4 byte → nhảy hụt đúng 4 byte, rồi giải nén ra rác mà không báo lỗi gì | Đọc độ dài ra biến trước, rồi mới cộng |
@@ -122,7 +130,7 @@ cd backend
 ./mvnw clean verify          # Windows: .\mvnw.cmd clean verify
 ```
 
-Yêu cầu: **102/102 test pass**. Trong log phải thấy dòng nghiệm thu:
+Yêu cầu: **121/121 test pass**. Trong log phải thấy dòng nghiệm thu:
 
 ```
 [NGHIEM THU] chieu dai = 478.2 cm | lap day = 92.45% | tiet kiem = 71.9% | so tam = 1

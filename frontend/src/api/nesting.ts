@@ -21,8 +21,13 @@ export async function getJob(jobId: string): Promise<Job> {
   return data
 }
 
-/** Hai dinh dang file thanh pham. */
-export type ExportFormat = 'pdf' | 'tif'
+/**
+ * Ba dinh dang file thanh pham.
+ *
+ * `cut` la file CAT: ban PDF vector chi chua duong cat va 4 dau dinh vi, danh cho may
+ * cat Graphtec. No KHONG phai ban in.
+ */
+export type ExportFormat = 'pdf' | 'tif' | 'cut'
 
 /** URL tai mot tam, dinh dang tuy chon. */
 export function sheetFileUrl(jobId: string, index: number, format: ExportFormat): string {

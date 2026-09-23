@@ -28,10 +28,16 @@ public enum ErrorCode {
     INVALID_REQUEST(HttpStatus.BAD_REQUEST),
     /** Thuat toan that bai vi ly do khong luong truoc. */
     NESTING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR),
-    /** Loi khong xac dinh. */
     /** Tam qua lon de raster hoa thanh TIFF o do phan giai dang dat. */
     TIFF_TOO_LARGE(HttpStatus.UNPROCESSABLE_ENTITY),
-
+    /**
+     * Co hinh lan vao vung phai de trong cho dau dinh vi o goc tam.
+     *
+     * <p>Van xuat duoc ban in binh thuong - chi rieng file CAT la khong, vi camera cua
+     * may cat se do nham dau.
+     */
+    CUT_MARK_AREA_BUSY(HttpStatus.UNPROCESSABLE_ENTITY),
+    /** Loi khong xac dinh. */
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final HttpStatus status;

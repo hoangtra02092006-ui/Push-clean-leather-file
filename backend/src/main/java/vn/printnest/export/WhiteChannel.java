@@ -37,20 +37,6 @@ public final class WhiteChannel {
     }
 
     /**
-     * Dung mat na tu kenh alpha roi co vao trong.
-     *
-     * @param image          anh da raster hoa
-     * @param threshold      nguong alpha 0..255; tren nguong thi coi la co hinh
-     * @param choke          so diem anh co vao trong moi phia
-     * @param whiteTolerance do lech cho phep so voi trang tuyet doi khi do nen
-     * @return mang mot byte moi diem: 255 = lot trang, 0 = khong
-     */
-    public static byte[] build(BufferedImage image, int threshold, int choke, int whiteTolerance) {
-        return choke(coverage(image, threshold, whiteTolerance),
-                image.getWidth(), image.getHeight(), choke);
-    }
-
-    /**
      * Co vung phu vao trong de duoc mat na muc trang.
      *
      * @param pixels so diem anh co vao moi phia; 0 thi giu nguyen

@@ -144,6 +144,21 @@ function retry() {
                 >
                   PDF
                 </a>
+                <span class="downloads__sep" aria-hidden="true">·</span>
+                <!--
+                  File cắt là bản PDF riêng, chỉ có đường cắt và 4 dấu định vị — không
+                  phải bản in. Để cuối vì nó là bước sau khi đã in xong.
+                -->
+                <a
+                  class="download download--muted"
+                  :href="sheetFileUrl(jobId, sheet.index, 'cut')"
+                  target="_blank"
+                  rel="noopener"
+                  title="Đường cắt + 4 dấu định vị cho máy cắt Graphtec"
+                  @click="guardDownload"
+                >
+                  CẮT
+                </a>
               </span>
             </td>
           </tr>
@@ -169,8 +184,9 @@ function retry() {
       </AppCard>
 
       <!--
-        Hai lựa chọn tải tất cả. TIF để trước và là nút đậm duy nhất của màn này, vì đó
-        là định dạng xưởng dùng để đưa thẳng vào máy; PDF là nút phụ cho ai cần bản vector.
+        Ba lựa chọn tải tất cả. TIF để sau cùng và là nút đậm duy nhất của màn này, vì đó
+        là định dạng xưởng dùng để đưa thẳng vào máy in; PDF là bản vector cho ai cần;
+        file cắt là bước sau khi in xong, gửi sang máy cắt Graphtec.
         Chỉ một nút primary — đúng quy ước của hệ thống thiết kế.
       -->
       <div class="actions">
@@ -186,6 +202,16 @@ function retry() {
           @click="guardDownload"
         >
           Tải tất cả PDF
+        </a>
+        <a
+          class="btn-link btn-link--ghost"
+          :href="exportZipUrl(jobId, 'cut')"
+          target="_blank"
+          rel="noopener"
+          title="Đường cắt + 4 dấu định vị cho máy cắt Graphtec"
+          @click="guardDownload"
+        >
+          Tải tất cả file cắt
         </a>
         <a
           class="btn-link"

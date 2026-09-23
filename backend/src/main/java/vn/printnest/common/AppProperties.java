@@ -15,7 +15,92 @@ import java.util.List;
  */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(Storage storage, Cors cors, Trim trim, Retention retention,
-                            Tiff tiff) {
+                            Tiff tiff, Cut cut) {
+
+    /**
+     * Xuat file cat cho may cat Graphtec.
+     *
+     * <p>File cat la ban PDF VECTOR rieng, chi chua duong cat quanh moi hinh va 4 dau dinh
+     * vi. No KHONG phai ban in va khong thay the ban in: tho mo no bang Illustrator hoac
+     * CorelDRAW roi day sang may cat qua plugin Cutting Master.
+     *
+     * <p>Moi con so mac dinh o day doc tu anh chup man hinh Cutting Master cua xuong, khong
+     * con nao tu nghi ra.
+     *
+     * @param dpi            do phan giai de do vien, bang dung ban in. 300 DPI cho mot
+     *                       diem anh 0,085 mm; xuong 150 DPI thi thanh 0,169 mm va duong
+     *                       cat bam net kem han o cho co chi tiet nho
+     * @param offsetMm       no duong cat ra NGOAI vien lop W1 bao nhieu milimet. 0 la chay
+     *                       dung tren vien do - mac dinh, vi day la cai tho nhin thay khi
+     *                       bat kenh W1 len trong Photoshop
+     * @param simplifyMm     sai so cho phep khi bot dinh cua duong cat
+     * @param minAreaMm2     bo qua mang nho hon muc nay - hat bui hay net le trong file
+     *                       khong dang mot duong cat rieng
+     * @param strokePt       do day net cua duong cat, don vi point
+     * @param spotName       ten mau muc rieng cua duong cat. Illustrator va Cutting Master
+     *                       deu nhan dang duong cat bang TEN nay
+     * @param mark           thong so dau dinh vi
+     */
+    public record Cut(int dpi, double offsetMm, double simplifyMm, double minAreaMm2,
+                      double strokePt, String spotName, Mark mark) {
+
+        /**
+         * Dau dinh vi o 4 goc, kieu "Graphtec 4 Points Type 1".
+         *
+         * <p>May cat dung camera do 4 dau nay de biet phim nam lech bao nhieu so voi luc
+         * in, roi bu lai. Sai thong so thi may do khong ra dau va tu choi chay.
+         *
+         * <p><b>Hinh dau khai RIENG cho tung goc.</b> Khong co file PDF mau de doi chieu
+         * tung milimet, nen de han o cau hinh: may cat do khong ra dau thi sua mot dong
+         * chu khong phai sua code. Mac dinh ca bon goc deu
+         * {@link Shape#SQUARE_WITH_EDGE}.
+         *
+         * @param lengthMm     chieu dai canh o vuong dau
+         * @param thicknessMm  do day net
+         * @param clearanceMm  vung trong BAT BUOC quanh dau. Co hinh lan vao day thi camera
+         *                     do nham, nen gap truong hop do thi TU CHOI xuat file chu
+         *                     khong xuat ra mot file se hong khi chay
+         * @param topLeft      hinh dau goc tren-trai; xem {@link Shape}
+         * @param topRight     hinh dau goc tren-phai
+         * @param bottomLeft   hinh dau goc duoi-trai
+         * @param bottomRight  hinh dau goc duoi-phai
+         */
+        public record Mark(double lengthMm, double thicknessMm, double clearanceMm,
+                           Shape topLeft, Shape topRight, Shape bottomLeft, Shape bottomRight) {
+
+            /** Cac kieu dau ve duoc. */
+            public enum Shape {
+                /**
+                 * Hai net nam o hai canh PHIA TRONG, khep o vuong cung voi mep trang.
+                 *
+                 * <p>Chi ve hai net; hai canh con lai cua o vuong chinh la hai mep giay o
+                 * goc do. May cat nhin ra o vuong khep kin va hieu day la moc vung cat.
+                 *
+                 * <pre>
+                 *   goc duoi-trai:
+                 *     mep trai  |                  net doc nam o x = 10 mm
+                 *               |  . . . . . █     net ngang nam o y = 10 mm
+                 *               |  . . . . . █
+                 *               |  █████████ █  &lt;- net ngang
+                 *               +---------------
+                 *                  mep duoi
+                 * </pre>
+                 */
+                SQUARE_WITH_EDGE,
+                /** Hai canh gap goc, op vao dung hai mep trang. */
+                L,
+                /** O vuong ve du bon canh, giua de trong. */
+                SQUARE_OUTLINE,
+                /** O vuong to day. */
+                SQUARE_FILLED
+            }
+
+            /** Canh cua o vuong phai de trong o moi goc: dau cong vung trong quanh no. */
+            public double zoneMm() {
+                return lengthMm + clearanceMm;
+            }
+        }
+    }
 
     /**
      * @param path        thu muc luu file tam tren dia
