@@ -44,12 +44,27 @@ public class ExportController {
     private final NestingService nestingService;
     private final PdfComposer composer;
     private final TiffComposer tiffComposer;
+    private final ExportCache cache;
 
     public ExportController(NestingService nestingService, PdfComposer composer,
-                            TiffComposer tiffComposer) {
+                            TiffComposer tiffComposer, ExportCache cache) {
         this.nestingService = nestingService;
         this.composer = composer;
         this.tiffComposer = tiffComposer;
+        this.cache = cache;
+    }
+
+    /**
+     * Dung mot tam, dung lai ban da dung neu co.
+     *
+     * <p>Tho hay tai mot tam de xem roi moi tai ca bo .zip. Khong co buoc nay thi moi tam
+     * deu bi dung lai lan thu hai, ma mot ban TIF mat vai giay.
+     */
+    private byte[] build(Job job, Sheet sheet, String ext, boolean cutLines) {
+        return cache.get(job.jobId(), sheet.index(), ext,
+                () -> "tif".equals(ext)
+                        ? tiffComposer.compose(sheet, cutLines)
+                        : composer.compose(sheet, cutLines));
     }
 
     /** Tai PDF cua mot tam. */
@@ -57,7 +72,7 @@ public class ExportController {
     public ResponseEntity<byte[]> sheetPdf(@PathVariable String jobId, @PathVariable int index) {
         Job job = nestingService.requireDone(jobId);
         Sheet sheet = sheetAt(job, index);
-        byte[] pdf = composer.compose(sheet, job.request().drawCutLinesOrDefault());
+        byte[] pdf = build(job, sheet, "pdf", job.request().drawCutLinesOrDefault());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
@@ -71,7 +86,7 @@ public class ExportController {
     public ResponseEntity<byte[]> sheetTif(@PathVariable String jobId, @PathVariable int index) {
         Job job = nestingService.requireDone(jobId);
         Sheet sheet = sheetAt(job, index);
-        byte[] tiff = tiffComposer.compose(sheet, job.request().drawCutLinesOrDefault());
+        byte[] tiff = build(job, sheet, "tif", job.request().drawCutLinesOrDefault());
 
         return ResponseEntity.ok()
                 .contentType(IMAGE_TIFF)
@@ -98,9 +113,7 @@ public class ExportController {
         try (ZipOutputStream zip = new ZipOutputStream(buffer)) {
             for (Sheet sheet : job.result().sheets()) {
                 zip.putNextEntry(new ZipEntry(fileName(job, sheet, ext)));
-                zip.write("tif".equals(ext)
-                        ? tiffComposer.compose(sheet, cutLines)
-                        : composer.compose(sheet, cutLines));
+                zip.write(build(job, sheet, ext, cutLines));
                 zip.closeEntry();
             }
         } catch (IOException ex) {
