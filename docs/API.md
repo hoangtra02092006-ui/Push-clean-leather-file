@@ -469,10 +469,10 @@ Mảng nhỏ hơn `APP_CUT_MIN_AREA_MM2` (mặc định **0,2 mm²**) bị bỏ.
 
 | | |
 |---|---|
-| Kích thước trang | **Đúng bằng bản in**, lấy từ `Sheet` chứ không quy ngược từ số điểm ảnh |
+| Kích thước trang | Bề ngang **luôn đúng bằng bản in**, lấy từ `Sheet` chứ không quy ngược từ số điểm ảnh. Góc tấm chật thì chiều **dài** cộng thêm phần nới — xem mục dưới |
 | Lớp `CutContour` | Đường cắt, nét 0,25 pt, **màu mực riêng** tên `CutContour`, không tô nền |
 | Lớp `RegMarks` | 4 dấu định vị, tô đặc K100 |
-| Dấu định vị | Cạnh **10,00 mm**, dày **1,00 mm**, góc ngoài đặt **đúng 4 góc trang** |
+| Dấu định vị | Cạnh **15,00 mm**, dày **1,00 mm**, góc ngoài đặt **đúng 4 góc trang cắt** |
 | Hình dấu | Khai **riêng từng góc**. Mặc định cả bốn góc là `SQUARE_WITH_EDGE` |
 
 **`SQUARE_WITH_EDGE` chỉ vẽ HAI nét** — hai cạnh còn lại của ô vuông chính là hai mép giấy ở góc đó. Máy cắt nhìn ra một ô vuông khép kín và hiểu đó là mốc vùng cắt:
@@ -481,9 +481,9 @@ Mảng nhỏ hơn `APP_CUT_MIN_AREA_MM2` (mặc định **0,2 mm²**) bị bỏ.
 góc dưới-trái:
 
   mép trái │
-           │   . . . . . █      nét dọc  cách mép trái 10 mm
+           │   . . . . . █      nét dọc  cách mép trái 15 mm
            │   . . . . . █
-           │   █████████ █  ←   nét ngang cách mép dưới 10 mm
+           │   █████████ █  ←   nét ngang cách mép dưới 15 mm
            └────────────────
               mép dưới
 ```
@@ -499,18 +499,28 @@ góc dưới-trái:
 
 > Illustrator và Cutting Master nhận dạng đường cắt bằng **tên** màu mực, không phải bằng màu hiển thị. Màu thay thế (K100) chỉ để nhìn trên màn hình.
 
-#### ⚠️ Bốn góc tấm phải trống 15 mm
+#### Góc tấm chật thì bản cắt tự nới DÀI ra
 
-Dấu chiếm 10 mm, cộng 5 mm vùng trống bắt buộc quanh nó là **15 mm** ở mỗi góc. Có nét vẽ lấn vào đó thì camera của máy cắt đo nhầm dấu và chạy lệch cả tấm phim — nên hệ thống **từ chối xuất file cắt** và trả `CUT_MARK_AREA_BUSY` (422) kèm hướng xử lý.
+Mỗi góc phải để trống **20 mm** — dấu 15 mm cộng 5 mm vùng trống quanh nó. Có nét vẽ lấn vào đó thì camera của máy cắt đo nhầm dấu và chạy lệch cả tấm phim.
 
-Phép chặn soi **nét vẽ thật**, không soi khung bao. Nên kết quả phụ thuộc hình:
+Gặp trường hợp đó, bản cắt **tự nới trang dài ra** — đều hai đầu — cho tới khi bốn góc sạch, rồi mới đặt dấu.
+
+> **Vì sao không chặn như trước.** Tấm đã ghép xong rồi mới tới lượt bản cắt. Bắt thợ xếp lại tấm cho thoáng góc là bắt làm lại từ đầu, mà bản cắt là file **riêng** — nó được phép dài hơn bản in.
+
+> **Vì sao chỉ nới chiều dài.** Cuộn chạy liên tục nên dài thêm không tốn gì. Bề ngang thì vướng hai trần cứng: **khổ cuộn 603 mm** và **mức job tối đa 576 mm** của Cutting Master — bản cắt 570 mm mà nới đều bốn phía là thành 602 mm, máy cắt không nhận. Mà nới ngang cũng không cần: ô vuông ở góc chỉ cần **sạch**, đẩy hình lên dọc là nó ra khỏi ô đó rồi.
+
+Phép đo soi **nét vẽ thật**, không soi khung bao. Nên mức nới phụ thuộc hình:
 
 | Loại hình | Lề 5 mm (mặc định) |
 |---|---|
-| Nhãn chữ nhật tô đặc | **Chặn** — mực chạm ngay vào góc |
-| Nét vẽ có góc trống (hoa lá, chữ) | Thường vẫn qua, vì góc tấm không có mực |
+| Nhãn chữ nhật tô đặc | Nới **16 mm** mỗi đầu — mực chỉ cách mép đúng một lề |
+| Nét vẽ có góc trống (hoa lá, chữ) | Thường **không nới**, vì góc tấm vốn không có mực |
 
-Muốn chắc chắn cắt được với mọi hình thì ở bước 2 đặt **lề ≥ 15 mm**. Bản in PDF và TIF không vướng giới hạn này — chỉ riêng bản cắt.
+Đo thật trên tấm 12 nhãn 20×18 cm, lề 5 mm: bản in **570 × 819 mm**, bản cắt **570 × 851 mm** — rộng y nguyên, dài thêm 16 mm mỗi đầu. (Lề 5 mm đáng lẽ chỉ cần 15; phép đo làm tròn lên theo điểm ảnh nên dư ra 1 mm, và dư về phía an toàn.)
+
+**Nới tối đa đúng bằng một vùng dấu (20 mm mỗi đầu).** Nới bằng đó thì mọi điểm ảnh đều nằm ngoài ô vuông ở góc, bất kể nó ở đâu — nên bài toán luôn có lời giải và trang cắt không bao giờ dài quá bản in 40 mm.
+
+Bản in PDF và TIF **không đổi kích thước** — chỉ bản cắt nới.
 
 #### Cách kiểm thật trước khi chạy máy
 
@@ -541,7 +551,7 @@ GET .../export.zip?format=cut -> minh-tri-a7e3f019-cut.zip
 
 Định dạng lạ bị **báo lỗi ngay** chứ không lặng lẽ trả về PDF — trả nhầm định dạng thì thợ chỉ phát hiện khi file đã ở trên máy in.
 
-**Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`, `INVALID_REQUEST`, `TIFF_TOO_LARGE`, `CUT_MARK_AREA_BUSY`.
+**Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`, `INVALID_REQUEST`, `TIFF_TOO_LARGE`.
 
 ---
 
@@ -571,7 +581,6 @@ Mọi lỗi đều trả về cùng một cấu trúc:
 | `JOB_NOT_READY` | 409 | Job chưa chạy xong nên chưa có gì để tải |
 | `NESTING_FAILED` | 500 | Thuật toán không hội tụ hoặc số lượng bị lệch |
 | `TIFF_TOO_LARGE` | 422 | Tấm quá lớn để dựng TIF ở độ phân giải đang đặt. Giảm `APP_TIFF_DPI` hoặc đặt chiều dài tối đa mỗi file ngắn lại |
-| `CUT_MARK_AREA_BUSY` | 422 | Có hình lấn vào chỗ phải để trống cho dấu định vị ở góc tấm. Đặt lề ≥ 15 mm rồi ghép lại. **Chỉ chặn bản cắt** — bản in PDF và TIF vẫn tải được |
 | `INTERNAL_ERROR` | 500 | Lỗi không lường trước. Stack trace chỉ ghi vào log, không lộ ra ngoài |
 
 Frontend phân nhánh theo `error.code`, **không** parse chuỗi `message`.

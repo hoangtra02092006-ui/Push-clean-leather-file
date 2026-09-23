@@ -117,13 +117,14 @@ public class CutComposer {
                 cutMask = CutContours.dilate(cutMask, width, height, radius);
             }
 
-            guardMarkZones(cutMask, width, height, sheet, settings);
+            double padMm = padding(cutMask, width, height, settings);
 
-            List<List<double[]>> paths = outlines(cutMask, width, height, settings);
-            byte[] result = writePdf(sheet, paths, width, height, settings);
+            List<List<double[]>> paths = outlines(cutMask, width, height, settings, padMm);
+            byte[] result = writePdf(sheet, paths, width, height, settings, padMm);
 
-            log.info("Da dung file cat tam {}: {} duong cat, no ra {} mm, mat {} ms",
-                    sheet.index() + 1, paths.size(), settings.offsetMm(),
+            log.info("Da dung file cat tam {}: {} duong cat, no ra {} mm, noi dai {} mm "
+                            + "o moi dau, mat {} ms",
+                    sheet.index() + 1, paths.size(), settings.offsetMm(), padMm,
                     System.currentTimeMillis() - start);
             return result;
         } catch (IOException ex) {
@@ -141,9 +142,12 @@ public class CutComposer {
      *
      * <p>Toa do tra ve da doi sang MILIMET, goc o trai-duoi giong quy uoc PDF - anh thi
      * dem hang tu tren xuong nen truc doc phai lat mot lan o day.
+     *
+     * @param padMm phan noi them o moi dau tam; hinh bi day len DOC dung bang do, con be
+     *              ngang thi giu nguyen
      */
     private List<List<double[]>> outlines(byte[] cutMask, int width, int height,
-                                          AppProperties.Cut settings) {
+                                          AppProperties.Cut settings, double padMm) {
         double mmPerPixel = 25.4 / settings.dpi();
         double minAreaPixels = settings.minAreaMm2() / (mmPerPixel * mmPerPixel);
         double tolerance = settings.simplifyMm() / mmPerPixel;
@@ -168,7 +172,7 @@ public class CutComposer {
             for (double[] point : simplified) {
                 inMillimetres.add(new double[]{
                         point[0] * mmPerPixel,
-                        (height - point[1]) * mmPerPixel});
+                        (height - point[1]) * mmPerPixel + padMm});
             }
             outlines.add(inMillimetres);
         }
@@ -179,42 +183,68 @@ public class CutComposer {
     }
 
     /**
-     * Tu choi xuat file neu co hinh lan vao cho phai de trong cho dau dinh vi.
+     * Phai noi trang cat ra bao nhieu de bon goc con trong cho dat dau dinh vi.
      *
      * <p>May cat dung camera do 4 dau nay de biet phim nam lech bao nhieu so voi luc in.
      * Co net ve lan vao vung do thi camera do nham, va may chay lech - hong ca tam phim.
      *
-     * <p>Bao loi o day chu khong xuat ra roi de tho phat hien khi dao da ha xuong. Ban IN
-     * van tai duoc binh thuong; chi rieng ban CAT la tu choi.
+     * <p><b>Noi trang chu khong tu choi.</b> Tam da ghep xong roi moi den luot ban cat,
+     * nen bat tho xep lai tam cho thoang goc la bat lam lai tu dau. Ban cat la file RIENG
+     * nen duoc phep dai hon ban in.
+     *
+     * <p><b>Chi noi theo CHIEU DAI, khong dong vao chieu ngang.</b> Cuon chay lien tuc nen
+     * dai them khong ton gi, con ngang thi vuong hai tran cung: kho cuon 603 mm va muc job
+     * toi da 576 mm cua Cutting Master - ban cat rong 570 mm ma noi deu bon phia la thanh
+     * 602 mm, may cat khong nhan.
+     *
+     * <p>Ma noi ngang cung khong can: o vuong phai de trong o goc chi can SACH. Day hinh
+     * len doc la no ra khoi o do roi, khong phai dong den be ngang.
+     *
+     * <p><b>Vi sao luon du.</b> Noi p thi diem anh o cach mep ngang mot doan d bi day
+     * thanh {@code d + p}. Dat {@code p = zone} la moi diem anh deu nam ngoai o vuong,
+     * bat ke no o dau. Nen luon tim duoc so noi, va khong bao gio vuot mot vung dau.
+     *
+     * @return so milimet noi them o MOI DAU tam, lam tron LEN so nguyen cho tho de doc
      */
-    private void guardMarkZones(byte[] cutMask, int width, int height, Sheet sheet,
-                                AppProperties.Cut settings) {
+    private double padding(byte[] cutMask, int width, int height, AppProperties.Cut settings) {
+        double mmPerPixel = 25.4 / settings.dpi();
         double zoneMm = settings.mark().zoneMm();
-        int zone = (int) Math.ceil(zoneMm * settings.dpi() / 25.4);
-        int side = Math.min(zone, Math.min(width, height));
+        int limitX = (int) Math.min(Math.ceil(zoneMm / mmPerPixel), width);
+        int limitY = (int) Math.min(Math.ceil(zoneMm / mmPerPixel), height);
 
-        String[] corners = {"tren-trai", "tren-phai", "duoi-trai", "duoi-phai"};
-        int[][] origins = {
-                {0, 0}, {width - side, 0}, {0, height - side}, {width - side, height - side}};
+        // Do bang MILIMET chu khong bang diem anh. Lam tron vung dau sang diem anh roi lam
+        // tron nguoc lai la cong doi hai lan sai so, va phan noi vot qua chinh vung dau.
+        double neededMm = 0;
+        for (int corner = 0; corner < 4; corner++) {
+            boolean fromRight = (corner & 1) != 0;
+            boolean fromTop = (corner & 2) != 0;
 
-        for (int corner = 0; corner < origins.length; corner++) {
-            int fromX = origins[corner][0];
-            int fromY = origins[corner][1];
-
-            for (int y = fromY; y < fromY + side; y++) {
-                for (int x = fromX; x < fromX + side; x++) {
-                    if (cutMask[y * width + x] == 0) {
-                        continue;
+            // Chi xet diem anh nam trong DAI DOC rong bang o vuong dau: ra ngoai dai do
+            // thi du sat mep ngang den may cung khong cham vao o vuong.
+            //
+            // Trong dai do, diem thap nhat quyet dinh: day no vuot qua canh o vuong la moi
+            // diem con lai cung vuot theo.
+            int clear = Integer.MAX_VALUE;
+            scan:
+            for (int dy = 0; dy < limitY; dy++) {
+                int row = (fromTop ? height - 1 - dy : dy) * width;
+                for (int dx = 0; dx < limitX; dx++) {
+                    if (cutMask[row + (fromRight ? width - 1 - dx : dx)] != 0) {
+                        // Thoat CA HAI vong. Bo qua cho nay la {@code clear} bi hang sau
+                        // ghi de, va tri so cuoi cung la hang CUOI co hinh chu khong phai
+                        // hang dau - noi hut di, dau de len hinh.
+                        clear = dy;
+                        break scan;
                     }
-                    throw new ApiException(ErrorCode.CUT_MARK_AREA_BUSY, String.format(
-                            "Tam %d co hinh lan vao goc %s, cho do phai de trong %.0f x %.0f mm "
-                                    + "cho dau dinh vi cua may cat. Hay noi rong le tam len "
-                                    + "it nhat %.0f mm roi ghep lai, hoac bot so hinh tren tam. "
-                                    + "Ban in PDF va TIF khong vuong gioi han nay.",
-                            sheet.index() + 1, corners[corner], zoneMm, zoneMm, zoneMm));
                 }
             }
+
+            if (clear != Integer.MAX_VALUE) {
+                neededMm = Math.max(neededMm, zoneMm - clear * mmPerPixel);
+            }
         }
+
+        return neededMm > 0 ? Math.ceil(neededMm) : 0;
     }
 
     /**
@@ -222,13 +252,19 @@ public class CutComposer {
      *
      * <p>Kich thuoc trang lay tu {@link Sheet} chu khong tu so diem anh: so diem anh da qua
      * mot lan lam tron khi ve, nen quy nguoc lai co the lech vai phan tram milimet so voi
-     * ban in. Trang cat phai trung khit ban in thi may cat moi bu lech dung.
+     * ban in.
+     *
+     * <p>Chieu ngang LUON dung bang ban in. Chi chieu DAI duoc cong them {@code padMm} o
+     * moi dau khi hinh lan vao cho dat dau - xem {@link #padding}.
      */
     private byte[] writePdf(Sheet sheet, List<List<double[]>> paths, int width, int height,
-                            AppProperties.Cut settings) throws IOException {
+                            AppProperties.Cut settings, double padMm) throws IOException {
+        double pageWidthMm = sheet.widthMm();
+        double pageLengthMm = sheet.lengthMm() + 2 * padMm;
+
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(new PDRectangle(
-                    Units.mmToPt(sheet.widthMm()), Units.mmToPt(sheet.lengthMm())));
+                    Units.mmToPt(pageWidthMm), Units.mmToPt(pageLengthMm)));
             document.addPage(page);
 
             PDOptionalContentGroup cutLayer = new PDOptionalContentGroup(settings.spotName());
@@ -252,11 +288,11 @@ public class CutComposer {
                 content.beginMarkedContent(COSName.OC, markLayer);
                 content.setNonStrokingColor(new PDColor(new float[]{0f, 0f, 0f, 1f},
                         PDDeviceCMYK.INSTANCE));
-                drawRegistrationMarks(content, sheet, settings.mark());
+                drawRegistrationMarks(content, pageWidthMm, pageLengthMm, settings.mark());
                 content.endMarkedContent();
             }
 
-            logGeometry(sheet, paths, width, height, settings);
+            logGeometry(sheet, paths, width, height, settings, pageWidthMm, pageLengthMm, padMm);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             document.save(out);
@@ -278,18 +314,19 @@ public class CutComposer {
     /**
      * Ve 4 dau dinh vi, moi goc mot hinh theo cau hinh.
      *
-     * <p>Goc NGOAI cua dau dat dung goc trang, khong chua le. Chon vay vi kich thuoc trang
-     * cat phai giu dung bang ban in - khong duoc noi trang ra de nhet dau vao.
+     * <p>Goc NGOAI cua dau dat dung goc trang, khong chua le. Trang o day la trang CAT -
+     * da cong phan noi neu co, nen goc trang khong phai luc nao cung la goc ban in.
      *
      * <p>Moi dau ve bang cac hinh chu nhat TO DAY chu khong phai net ke. To day thi do day
      * la kich thuoc that cua hinh, khong phu thuoc phan mem nao dien giai do day net ra sao.
      */
-    private static void drawRegistrationMarks(PDPageContentStream content, Sheet sheet,
+    private static void drawRegistrationMarks(PDPageContentStream content, double pageWidthMm,
+                                              double pageLengthMm,
                                               AppProperties.Cut.Mark mark) throws IOException {
         float length = Units.mmToPt(mark.lengthMm());
         float thickness = Units.mmToPt(mark.thicknessMm());
-        float right = Units.mmToPt(sheet.widthMm());
-        float top = Units.mmToPt(sheet.lengthMm());
+        float right = Units.mmToPt(pageWidthMm);
+        float top = Units.mmToPt(pageLengthMm);
 
         // Moi goc: toa do goc, va huong di VAO TRONG tam theo hai truc.
         drawMark(content, mark.bottomLeft(), 0, 0, 1, 1, length, thickness);
@@ -370,16 +407,21 @@ public class CutComposer {
      * voi phan Job size va vi tri dau ma no hien.
      */
     private void logGeometry(Sheet sheet, List<List<double[]>> paths, int width, int height,
-                             AppProperties.Cut settings) {
-        double length = settings.mark().lengthMm();
+                             AppProperties.Cut settings, double pageWidthMm,
+                             double pageLengthMm, double padMm) {
         log.info("File cat tam {}: trang {} x {} mm ({} x {} diem o {} DPI), {} duong cat",
                 sheet.index() + 1,
-                Units.round2(sheet.widthMm()), Units.round2(sheet.lengthMm()),
+                Units.round2(pageWidthMm), Units.round2(pageLengthMm),
                 width, height, settings.dpi(), paths.size());
+        if (padMm > 0) {
+            log.info("  Da noi DAI them {} mm o moi dau so voi ban in {} x {} mm, vi co hinh "
+                            + "lan vao cho dat dau dinh vi. Be ngang giu nguyen.",
+                    padMm, Units.round2(sheet.widthMm()), Units.round2(sheet.lengthMm()));
+        }
         log.info("  4 dau dinh vi, canh {} mm, day {} mm, goc trang dat tai: "
                         + "(0, 0) - ({}, 0) - (0, {}) - ({}, {}) mm",
-                length, settings.mark().thicknessMm(),
-                Units.round2(sheet.widthMm()), Units.round2(sheet.lengthMm()),
-                Units.round2(sheet.widthMm()), Units.round2(sheet.lengthMm()));
+                settings.mark().lengthMm(), settings.mark().thicknessMm(),
+                Units.round2(pageWidthMm), Units.round2(pageLengthMm),
+                Units.round2(pageWidthMm), Units.round2(pageLengthMm));
     }
 }

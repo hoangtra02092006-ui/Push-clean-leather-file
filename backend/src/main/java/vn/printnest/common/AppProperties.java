@@ -55,11 +55,14 @@ public record AppProperties(Storage storage, Cors cors, Trim trim, Retention ret
          * chu khong phai sua code. Mac dinh ca bon goc deu
          * {@link Shape#SQUARE_WITH_EDGE}.
          *
-         * @param lengthMm     chieu dai canh o vuong dau
+         * @param lengthMm     chieu dai canh o vuong dau. 15 mm la so xuong chot; anh chup
+         *                     Cutting Master ghi 10 mm nhung tho muon dau to hon cho camera
+         *                     de bat
          * @param thicknessMm  do day net
          * @param clearanceMm  vung trong BAT BUOC quanh dau. Co hinh lan vao day thi camera
-         *                     do nham, nen gap truong hop do thi TU CHOI xuat file chu
-         *                     khong xuat ra mot file se hong khi chay
+         *                     do nham, nen gap truong hop do thi ban cat TU NOI DAI trang ra
+         *                     cho den khi bon goc sach - be ngang giu nguyen. Noi toi da
+         *                     bang mot {@link #zoneMm()}
          * @param topLeft      hinh dau goc tren-trai; xem {@link Shape}
          * @param topRight     hinh dau goc tren-phai
          * @param bottomLeft   hinh dau goc duoi-trai
@@ -95,7 +98,12 @@ public record AppProperties(Storage storage, Cors cors, Trim trim, Retention ret
                 SQUARE_FILLED
             }
 
-            /** Canh cua o vuong phai de trong o moi goc: dau cong vung trong quanh no. */
+            /**
+             * Canh cua o vuong phai de trong o moi goc: dau cong vung trong quanh no.
+             *
+             * <p>Cung la muc NOI DAI toi da cua trang cat: day hinh len bang day thi moi
+             * diem anh deu nam ngoai o vuong o goc, bat ke no o dau.
+             */
             public double zoneMm() {
                 return lengthMm + clearanceMm;
             }
