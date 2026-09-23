@@ -287,7 +287,7 @@ Hai định dạng, **cùng một bố trí**: cả hai đều dựng lại từ
 | Đuôi | Trả về | Dùng khi |
 |---|---|---|
 | `/pdf` | `application/pdf` | Giữ nguyên vector, nét sắc ở mọi mức phóng |
-| `/tif` | `image/tiff` (nén LZW, RGB) | RIP chỉ nhận ảnh bitmap |
+| `/tif` | `image/tiff` (nén Deflate, CMYK + kênh mực trắng `W1`) | RIP chỉ nhận ảnh bitmap |
 
 Tên file có sẵn kích thước để thợ không phải mở ra kiểm tra:
 
@@ -300,7 +300,7 @@ minh-tri-a7e3f019-tam01-57x100cm.tif
 
 ### Về bản TIF
 
-TIF là ảnh bitmap nên phải chốt trước độ phân giải, đặt bằng `APP_TIFF_DPI` (mặc định 150). **Gấp đôi DPI là gấp bốn lần bộ nhớ** — một tấm 57 × 100 cm:
+TIF là ảnh bitmap nên phải chốt trước độ phân giải, đặt bằng `APP_TIFF_DPI` (mặc định 300). **Gấp đôi DPI là gấp bốn lần bộ nhớ** — một tấm 57 × 100 cm:
 
 | DPI | Kích thước | Bộ nhớ một ảnh |
 |---:|---|---:|
@@ -308,18 +308,138 @@ TIF là ảnh bitmap nên phải chốt trước độ phân giải, đặt bằ
 | 300 | 6.732 × 11.811 | 318 MB |
 | 600 | 13.465 × 23.622 | 1,3 GB |
 
-Vì vậy có **trần cứng** `APP_TIFF_MAX_MEGAPIXELS` (mặc định 80 triệu điểm). Vượt trần thì trả `TIFF_TOO_LARGE` kèm hướng xử lý, thay vì để máy chủ hết bộ nhớ rồi tự khởi động lại. **Bản PDF không vướng giới hạn này.**
+Vì vậy có **trần cứng** `APP_TIFF_MAX_MEGAPIXELS` (mặc định 100 triệu điểm). Vượt trần thì trả `TIFF_TOO_LARGE` kèm hướng xử lý, thay vì để máy chủ hết bộ nhớ rồi tự khởi động lại. **Bản PDF không vướng giới hạn này.**
 
 Thông số của file xuất ra, đọc thẳng từ tag trong file:
 
 | Tag | Giá trị | Vì sao |
 |---|---|---|
-| `Compression` | LZW | Không mất dữ liệu. Bản in không được phép có nhiễu quanh nét vẽ |
-| `PhotometricInterpretation` | RGB, 8 bit mỗi kênh | Giữ nguyên màu như bản PDF, không có kênh trong suốt |
+| `Compression` | Deflate (`APP_TIFF_COMPRESSION`) | Không mất dữ liệu. Bản in không được phép có nhiễu quanh nét vẽ |
+| `PhotometricInterpretation` | 5 = CMYK, 8 bit mỗi kênh | Hệ màu RIP của xưởng nhận |
+| `SamplesPerPixel` | 5 = CMYK + `W1` | Kênh thứ năm là mực trắng lót — xem mục dưới |
+| `ExtraSamples` | 0 (không xác định) | Phải là **0** chứ không phải 2. Để 2 thì phần mềm hiểu kênh W1 là độ **trong suốt** và nhấn chìm lớp màu theo nó |
+| `Photoshop` (34377) | khối khai kênh `W1` là màu mực riêng | Chuẩn TIFF không có chỗ ghi **tên** kênh, cũng không phân biệt được kênh phụ là lớp trong suốt hay màu mực. Thiếu khối này thì mở file ra chỉ thấy "Alpha 1" |
+| `ImageSourceData` (37724) | một lớp mang độ trong suốt | Ảnh gộp không có khái niệm trong suốt, nên nền rỗng hiện ra thành màu trắng. Lớp này cho thấy ô caro xám — xem mục dưới |
 | `XResolution` / `YResolution` | = `APP_TIFF_DPI` | **Thiếu là file nguy hiểm**: phần mềm sẽ đoán 72 DPI và tấm 57 cm in ra thành 2,4 mét |
 | `ResolutionUnit` | 2 (inch) | Đi kèm hai tag trên mới có nghĩa |
 | `RowsPerStrip` | 64 | Mặc định của Java là **1** — ảnh 4.836 hàng thành 4.836 dải, phình bảng tag và làm LZW khởi động lại từ điển mỗi hàng. Đặt 64 làm file nhẹ đi gần 5 lần |
-| `ICCProfile` | sRGB (6.876 byte) | Không có thì file chỉ nói "đây là RGB" mà không nói RGB **nào**, RIP phải đoán. Đoán sai thì màu lệch mà không chỗ nào báo lỗi |
+| `ICCProfile` | hồ sơ của chính hệ màu đang dùng | Không có thì file chỉ nói "đây là RGB/CMYK" mà không nói **loại nào**, RIP phải đoán. Đoán sai thì màu lệch mà không chỗ nào báo lỗi |
+
+### Hệ màu: CMYK (mặc định)
+
+Xưởng dùng CMYK vì RIP nhận định dạng đó, nên đây là **mặc định** và chạy được ngay không cần cấu hình gì.
+
+Chuyển màu dùng `ColorConvertOp` với hồ sơ ICC thật, **không** dùng công thức tay kiểu `K = 1 − max(R,G,B)`. Công thức tay chạy nhanh và nhìn qua thì "ra CMYK", nhưng nó bỏ qua toàn bộ đặc tính mực và giấy mà hồ sơ mô tả — màu lệch thấy rõ và lệch **không đều**, nên không bù lại được bằng cách chỉnh tay.
+
+Hồ sơ dùng để chuyển cũng được **nhúng vào file**, nên RIP biết chính xác những con số CMYK trong đó có nghĩa gì thay vì phải đoán.
+
+| Biến | Mặc định |
+|---|---|
+| `APP_TIFF_COLOR_MODE` | `cmyk` (đặt `rgb` để quay về RGB + sRGB) |
+| `APP_TIFF_CMYK_PROFILE` |  `classpath:color/USWebCoatedSWOP.icc` |
+
+Hồ sơ mặc định là **U.S. Web Coated (SWOP) v2** — **đúng hồ sơ mà file mẫu của thợ đang dùng**, đọc ra từ chính file đó. Chọn nó vì hai lẽ: màu khớp với quy trình Photoshop xưởng đang làm nên không thêm một lần lệch nữa; và nó chỉ **557 KB** trong khi các hồ sơ CGATS21 đều khoảng 3,5 MB — mà hồ sơ được **nhúng vào từng file** xuất ra, nên đó là 2,9 MB mỗi tấm.
+
+> **Nên thay bằng hồ sơ của chính máy in** nếu xin được từ nhà cung cấp RIP: nó mô tả đúng đặc tính mực và giấy của máy đó nên màu sát hơn. Đặt `APP_TIFF_CMYK_PROFILE` trỏ tới file đó là xong, không phải sửa code.
+>
+> Trong quy trình hiện tại của xưởng, RIP còn **tự chỉnh màu lại lần nữa** sau khi nhận file, nên hồ sơ mặc định đã đủ dùng.
+
+Bật CMYK làm **đỉnh bộ nhớ gấp đôi**: ảnh RGB và ảnh CMYK cùng tồn tại trong lúc chuyển. Tấm 57 × 100 cm ở 300 DPI là 318 MB + 318 MB = **608 MB đo được**, chuyển mất 1,2 giây. Cần máy chủ từ 2 GB.
+
+### Kênh mực trắng `W1`
+
+Máy in DTF phun một lớp mực **trắng lót** xuống trước, rồi mới phun màu lên trên. Không có lớp lót thì màu in lên vải tối sẽ chìm hết. File TIF mang thêm một **kênh màu mực riêng** (spot channel) tên `W1` để nói cho máy biết chỗ nào cần lót trắng.
+
+Toàn bộ cấu trúc đối chiếu với **file mẫu thợ làm tay trong Photoshop**, không suy đoán. Bốn kênh CMYK giữ nguyên không đổi — `W1` là phần **thêm vào**.
+
+**Lấy mặt nạ từ đâu.** Từ kênh alpha của ảnh đã dựng: chỗ nào có hình thì lót trắng, chỗ nào là phim trống thì không. **Không** lấy theo lối "điểm nào không trắng" — một logo có chữ trắng thật sẽ bị coi là nền và mất lớp lót, in lên áo màu tối là chữ biến mất.
+
+Với ảnh **không có nền trong suốt** (ảnh JPG nền trắng đặc chẳng hạn), nền được loang từ **mép tấm** vào qua các điểm gần trắng — đúng như thao tác bấm magic wand vào nền. Nhờ vậy chữ trắng nằm giữa logo vẫn giữ được lớp lót, vì nó bị màu bao quanh nên loang không tới.
+
+> **Chỗ vẫn chịu:** thiết kế có viền trắng **chạm mép** ảnh thì viền đó nối ra ngoài nên bị coi là nền. Không có cách nào phân biệt, kể cả làm tay.
+
+**Co vào trong.** Lớp trắng phải nằm **lọt bên trong** lớp màu. Hai lớp bằng nhau thì chỉ cần máy kéo phim lệch nửa milimet là viền trắng lòi ra quanh hình — nhìn rất rõ trên áo màu tối. Mặc định co **1 điểm ảnh**, đúng bằng thao tác `Select → Modify → Contract → 1` thợ đang làm tay. Ở 300 DPI, 1 điểm ảnh = 0,085 mm.
+
+| Biến | Mặc định | Ghi chú |
+|---|---|---|
+| `APP_TIFF_WHITE_ENABLED` | `true` | Đặt `false` để quay về CMYK thuần 4 kênh |
+| `APP_TIFF_WHITE_CHANNEL` | `W1` | Phải khớp đúng với cái RIP chờ đợi |
+| `APP_TIFF_WHITE_ALPHA_THRESHOLD` | `128` | Trên ngưỡng thì coi là có hình |
+| `APP_TIFF_WHITE_CHOKE` | `1` | Số điểm ảnh co vào mỗi phía |
+| `APP_TIFF_WHITE_TOLERANCE` | `6` | Độ lệch cho phép so với trắng tuyệt đối khi dò nền. Phải có dung sai vì nền trắng của ảnh JPG thường ra 250–255 chứ không phẳng |
+
+> **Chiều giá trị ngược với trực giác:** trong file, `W1 = 0` mới là **có** mực trắng, `255` là không. Đây là cách Photoshop ghi kênh mực riêng, đọc thẳng từ điểm ảnh của file mẫu mà ra. Đặt ngược thì lớp trắng thành âm bản — phun trắng vào khoảng trống và bỏ trống chỗ có hình. File vẫn mở bình thường, chỉ lộ khi mực đã lên áo.
+
+Kênh trắng làm đỉnh bộ nhớ lên **10 byte mỗi điểm ảnh** (ảnh đã vẽ 4 + ảnh năm kênh 5 + mặt nạ 1), so với 8 byte của CMYK thuần.
+
+### Lớp trong suốt — "không có vùng in"
+
+Ảnh gộp của TIFF không có khái niệm trong suốt: chỗ không có mực thì CMYK bằng `0 0 0 0`, mà Photoshop vẽ CMYK rỗng thành màu **trắng**. Nhìn vào không phân biệt được "nền trắng" với "không có vùng in". Thợ cần thấy **ô caro xám** để biết chắc máy chỉ in phần chi tiết.
+
+Vì vậy file mang thêm một **lớp Photoshop** ở tag `37724`, cấu trúc chép đúng file mẫu:
+
+```
+Chữ ký      : "Adobe Photoshop Document Data Block"
+Khối "Layr" :
+  1 lớp, khung (0,0)-(rộng,cao) = phủ kín tấm
+  5 kênh:  -1 (trong suốt)  0 (Cyan)  1 (Magenta)  2 (Yellow)  3 (Black)
+  chế độ hoà "norm", độ đặc 255, tên lớp "Layer 1", nén RLE
+```
+
+> **Bẫy thứ tự byte:** khối `34377` **luôn** là byte lớn trước, còn khối `37724` đi theo thứ tự byte của chính file TIFF bao quanh nó. File mẫu là `II` nên đọc chữ ký ra thành `"MIB8"` và `"ryaL"`. File mình ghi là `MM` nên khối này thuận chiều.
+
+> **Bẫy chiều giá trị, lần thứ hai:** bốn kênh màu của **lớp** nằm **ngược** với ảnh gộp. PSD lưu CMYK lật lại (`0` = mực đầy), ảnh gộp TIFF thì không (`0` = không mực). Đo trên file mẫu, kênh Cyan: ảnh gộp `21` ↔ lớp `234`; ảnh gộp `58` ↔ lớp `197` — lúc nào cũng tròn `255`. Ghi thẳng giá trị ảnh gộp vào lớp thì một hình màu **kem** bị đọc thành **đen đặc**, mà ảnh gộp vẫn đúng nên không phép kiểm số liệu nào bắt được. Riêng kênh trong suốt **không** lật.
+
+Kênh `-1` lấy **vùng phủ chưa co**, khác mặt nạ mực trắng: lớp màu trải hết ra mép hình, chỉ riêng lớp trắng mới thụt vào. Lấy nhầm mặt nạ đã co cho cả hai thì ảnh bị hụt một viền mỏng quanh mỗi hình — nhìn màn hình không ra, in mới thấy.
+
+**Cái giá:** ảnh bị lưu **hai lần** trong cùng một file (một bản gộp cho phần mềm nào cũng đọc được, một bản lớp mang độ trong suốt). Không tránh được — ảnh gộp là bắt buộc của chuẩn TIFF.
+
+Dữ liệu lớp nén bằng **ZIP** thay vì RLE như file mẫu. Đo A/B trên **cùng một tấm** 6.732 × 11.463 điểm:
+
+| Kiểu nén | Dung lượng file | Dựng lớp |
+|---|---:|---:|
+| RLE (như file mẫu) | 21,6 MB | 1.485 ms |
+| **ZIP (mặc định)** | **15,8 MB** | 5.024 ms |
+
+Tức là đổi 3,5 giây dựng thêm để bớt 5,8 MB tải về — hoà vốn ở tốc độ tải **1,7 MB/s**. Chọn ZIP vì file được **giữ lại sau lần dựng đầu**: tiền dựng trả một lần, tiền tải trả mỗi lần, và bản tải cả zip nhiều tấm thì dung lượng mới là chỗ thật sự đau.
+
+Đổi kiểu nén **không** đổi cấu trúc lớp. Máy in đọc ảnh gộp chứ không đọc lớp, nên chỗ này chỉ ảnh hưởng đến phần mềm mở file để xem.
+
+| Biến | Tác dụng |
+|---|---|
+| `APP_TIFF_TRANSPARENT_LAYER=false` | Bỏ hẳn lớp — ảnh gộp không đổi, chỉ mất ô caro |
+| `APP_TIFF_LAYER_ZIP=false` | Quay về RLE như file mẫu: dựng nhanh hơn, file to hơn |
+
+#### Kiểm tra trong Photoshop
+
+1. Mở file `.tif` vừa tải. Nền phải là **ô caro xám** chứ không phải màu trắng, và bảng **Layers** phải có một lớp tên `Layer 1`.
+2. Mở bảng **Window → Channels**.
+3. Phải thấy **năm** kênh theo thứ tự: `Cyan`, `Magenta`, `Yellow`, `Black`, rồi **`W1`** nằm sau `Black`.
+4. Bấm đúp vào `W1` — hộp thoại phải ghi **Spot Color**, độ đặc (Solidity) **100%**. Nếu nó ghi *Alpha Channel* thay vì *Spot Color* là sai.
+5. Bấm chọn riêng kênh `W1`: vùng **đen** là chỗ có mực trắng, và nó phải khớp hình nhưng **nhỏ hơn mép** đúng bằng số điểm đã co.
+
+### Tốc độ
+
+Thời gian dựng một tấm 57 × 100 cm ở 300 DPI, đo thật:
+
+| Chặng | Thời gian |
+|---|---:|
+| Vẽ trang PDF thành ảnh | ~200 ms |
+| Chuyển sang CMYK | ~900 ms |
+| **Nén** | **~1.500 ms** |
+
+Nén là chặng tốn nhất, nên nó là chỗ đáng chỉnh nhất. `APP_TIFF_COMPRESSION_QUALITY` đổi thẳng cán cân đó:
+
+| Mức nén | Thời gian | Dung lượng |
+|---|---:|---:|
+| 0,3 *(mặc định)* | 583 ms | 5.094 KB |
+| 0,75 | 1.378 ms | 3.983 KB |
+| mặc định của Java | 3.054 ms | 3.965 KB |
+| LZW | 2.296 ms | 5.953 KB |
+
+Mức 0,3 **nhanh gấp 5 lần** mức mặc định của Java mà file vẫn nhỏ hơn LZW. Vì nén không mất dữ liệu nên đây thuần tuý là đổi thời gian lấy dung lượng — **không đụng tới chất lượng ảnh**.
+
+File thành phẩm còn được **giữ lại sau khi dựng**, nên tải lại cùng một tấm, hoặc tải bộ `.zip` sau khi đã xem từng tấm, gần như tức thì. Bộ nhớ giữ tối đa 200 MB và bỏ bản lâu không ai dùng trước.
 
 Ghi metadata hỏng thì **từ chối phát hành file** chứ không phát hành một file sẽ in sai kích thước.
 

@@ -56,6 +56,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {
         "app.storage.path=${java.io.tmpdir}/printnest-test-tiff",
         "app.tiff.dpi=72",
+        // Bai nay kiem duong RGB. Mac dinh cua he thong la CMYK nen phai noi ro.
+        "app.tiff.color-mode=rgb",
         "logging.level.vn.printnest=WARN"
 })
 class TiffExportIntegrationTest {

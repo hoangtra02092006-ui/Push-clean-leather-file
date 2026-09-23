@@ -11,7 +11,13 @@
 *.jpeg  binary
 *.zip   binary
 *.jar   binary
+# File TIF mau dung de doi chieu cau truc kenh muc trang. Khong danh dau thi Git doi
+# LF thanh CRLF luc checkout, bang tag tro sai vi tri va file hong.
+*.tif   binary
+*.tiff  binary
 *.ico   binary
+*.icc   binary
+*.icm   binary
 
 # Script shell phai giu LF de chay duoc tren Linux va trong Docker.
 mvnw       text eol=lf
