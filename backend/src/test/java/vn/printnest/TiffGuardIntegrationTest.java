@@ -43,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // 600 DPI + tran 1 trieu diem: du de kich hoat voi mot tam be trong bai test.
         // O that la 150 DPI va tran 80 trieu.
         "app.tiff.dpi=600",
+        "app.tiff.color-mode=rgb",
         "app.tiff.max-megapixels=1",
         "logging.level.vn.printnest=WARN"
 })

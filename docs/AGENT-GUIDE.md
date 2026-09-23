@@ -100,6 +100,14 @@ Sau mỗi lần đổi schema, chạy lại kịch bản demo ở mục 6.
 | Dùng chung một con số giới hạn cho cả packer chữ nhật lẫn xếp lồng | Hai lối xếp đo chiều dài theo hai quy ước khác nhau: packer chữ nhật cắt bớt một gap ở trên cùng, xếp lồng thì không → tấm dài hơn giới hạn đúng bằng một gap, đặt 200 cm với khoảng cách 5 cm thì ra 205 cm | Giữ `maxContentLengthCmm` (chiều dài thật) tách khỏi `maxSheetLengthCmm` (đã cộng gap); chiều rộng vốn đã làm đúng nên cứ soi theo đó |
 | Nới thêm vài hàng "cho chắc" vào khung xếp (`budget + 2`) | Mỗi hàng thừa là một milimét tràn qua giới hạn thợ đã đặt | Có giới hạn thì lấy đúng số hàng cho phép, không cộng thêm |
 | Xoay hốc lõm theo chiều cao ĐÃ nở gap | Hốc lệch đi đúng một gap, hình chui vào bị chạm nét vẽ | Xoay theo `realH`, khớp với `PdfComposer` |
+| Cho `ColorConvertOp` ghi vào raster có **bước nhảy** khác số kênh | Nó bỏ qua bước nhảy, vẫn dồn 4 byte liền nhau → chỉ lấp 4/5 vùng nhớ, ảnh ra sọc ngang. Đo trên ảnh một màu đặc: 165.376/206.720 điểm có mực | Chuyển màu vào ảnh 4 kênh liền mạch rồi **chép** sang mảng 5 kênh; xem `TiffComposer.interleave()` |
+| Để `ColorConvertOp` tự xử lý kênh alpha | Cùng một điểm `0x00000000` cho hai kết quả khác nhau tuỳ **kích thước ảnh** (ảnh 1×1 ra đen đặc, ảnh 8×4 ra trắng) → khoảng trống quanh hình có thể bị đổ đầy mực đen | Tự đặt ảnh lên nền trắng trước (`flattenOntoWhite`), để alpha thành vô can |
+| Đoán chiều giá trị của kênh mực riêng (spot channel) | Photoshop ghi **ngược** với CMYK: 0 mới là có mực trắng. Đoán sai thì lớp trắng ra âm bản — phun trắng vào chỗ trống, bỏ trống chỗ có hình. File vẫn mở bình thường, chỉ lộ khi mực đã lên áo | Đọc thẳng điểm ảnh của file mẫu làm tay, đừng suy luận; xem `WhiteChannel.writeSpotBand()` |
+| Ghi thẳng giá trị ảnh gộp vào kênh CMYK của **lớp** PSD | PSD lưu CMYK **lật ngược** (0 = mực đầy), ảnh gộp TIFF thì không (0 = không mực). Hình màu kem bị đọc thành đen đặc. Ảnh gộp vẫn đúng nên mọi phép kiểm số liệu trên ảnh gộp đều xanh — chỉ mở file ra nhìn mới thấy, và rất dễ tưởng là lỗi chuyển màu | Lật `255 - giá trị` cho bốn kênh màu của lớp; **kênh trong suốt thì không lật**. Đo trên file mẫu: ảnh gộp + lớp luôn tròn 255 |
+| Giả định mọi khối Photoshop trong TIFF đều là byte lớn trước | Khối `34377` **luôn** lớn trước, còn `37724` đi theo thứ tự byte của file TIFF bao quanh. Đọc nhầm thì chữ ký ra `"MIB8"`, `"ryaL"` và mọi độ dài thành số hàng trăm triệu | Đọc thứ tự byte từ header TIFF rồi áp cho khối `37724`; `34377` thì cố định lớn trước |
+| Viết `p.position(p.position() + p.getInt())` | Java lấy `p.position()` **trước** khi `getInt()` đẩy con trỏ đi 4 byte → nhảy hụt đúng 4 byte, rồi giải nén ra rác mà không báo lỗi gì | Đọc độ dài ra biến trước, rồi mới cộng |
+| Dùng cây siêu dữ liệu ImageIO cho tag chứa byte thô | Mọi giá trị phải đi qua **chuỗi số** cách nhau bằng dấu phẩy: khối 20 MB thành chuỗi 71 triệu ký tự chiếm 136 MB bộ nhớ | Dùng `TIFFDirectory` + `TIFFField`, nhận thẳng `byte[]` |
+| Kiểm tra ảnh bằng cách chấm vài điểm lẻ | Điểm sai có thể trùng đúng giá trị mong đợi — tôi đã tưởng đường ghi 5 kênh chạy tốt vì chấm trúng 2 điểm may mắn | Đếm **toàn bộ** điểm ảnh theo nhóm, và vẽ ra PNG nhìn bằng mắt |
 
 ---
 
@@ -114,7 +122,7 @@ cd backend
 ./mvnw clean verify          # Windows: .\mvnw.cmd clean verify
 ```
 
-Yêu cầu: **26/26 test pass**. Trong log phải thấy dòng nghiệm thu:
+Yêu cầu: **102/102 test pass**. Trong log phải thấy dòng nghiệm thu:
 
 ```
 [NGHIEM THU] chieu dai = 478.2 cm | lap day = 92.45% | tiet kiem = 71.9% | so tam = 1

@@ -33,12 +33,84 @@ app:
     # Bao lau quet mot lan.
     sweep-minutes: ${APP_RETENTION_SWEEP_MINUTES:60}
   tiff:
-    # Do phan giai ban TIF. Hoi RIP cua xuong can bao nhieu roi dat lai bien nay.
+    # Do phan giai ban TIF. 300 la muc chuan cho in an.
     # Gap doi DPI la gap BON lan bo nho: 57x100cm o 150 DPI la 80 MB, o 300 DPI la 318 MB.
-    dpi: ${APP_TIFF_DPI:150}
+    dpi: ${APP_TIFF_DPI:300}
     # Tran cung, tinh bang trieu diem anh. Vuot qua thi bao loi ro rang chu khong de
-    # may chu het bo nho. 80 du cho tam 57 x 100 cm o 300 DPI.
-    max-megapixels: ${APP_TIFF_MAX_MEGAPIXELS:80}
+    # may chu het bo nho. 100 du cho tam 57 x 100 cm o 300 DPI (79,5 trieu diem).
+    max-megapixels: ${APP_TIFF_MAX_MEGAPIXELS:100}
+    # Kieu nen. Ca hai deu khong mat du lieu.
+    #
+    # Deflate nhanh hon LZW khoang 40% va cho file nho hon khoang 28% - do doc tren mot
+    # tam 57 x 100 cm o 300 DPI. Nen chiem toi 76% thoi gian dung mot ban TIF nen day la
+    # cho dang doi nhat.
+    #
+    # Doi ve LZW neu RIP doi cu khong doc duoc Deflate.
+    compression: ${APP_TIFF_COMPRESSION:Deflate}
+    # Muc nen 0..1. So NHO la nhanh va file to hon.
+    #
+    # Do that tren mot tam 57 x 100 cm o 300 DPI:
+    #   muc 0,3      583 ms -> 5.094 KB
+    #   muc 0,75   1.378 ms -> 3.983 KB
+    #   mac dinh   3.054 ms -> 3.965 KB   (cham gap 5 lan de bot 1 MB)
+    #   LZW        2.296 ms -> 5.953 KB
+    #
+    # Chon 0,3: nhanh gap 5 lan ma file van nho hon LZW. Nen khong mat du lieu nen muc
+    # nen chi doi thoi gian lay dung luong, khong anh huong chat luong anh.
+    compression-quality: ${APP_TIFF_COMPRESSION_QUALITY:0.3}
+    # Co kem lop mang do trong suot khong.
+    #
+    # Anh gop cua TIFF khong co khai niem trong suot: cho khong co muc thi CMYK bang
+    # 0 0 0 0, ma Photoshop ve CMYK rong thanh mau TRANG. Nhin vao khong phan biet duoc
+    # "nen trang" voi "khong co vung in". Lop nay cho thay o caro xam, dung nhu file mau
+    # tho lam tay.
+    #
+    # Doi lai anh bi luu HAI LAN trong cung mot file (mot ban gop + mot ban lop). Do tren
+    # tam 57 x 30,7 cm o 300 DPI: 4,21 MB -> 6,59 MB. Dat false neu tai file qua cham.
+    transparent-layer: ${APP_TIFF_TRANSPARENT_LAYER:true}
+    # Nen du lieu lop bang ZIP thay vi RLE (file mau dung RLE vi do la mac dinh cua
+    # Photoshop). Do A/B tren CUNG mot tam 6.732 x 11.463 diem:
+    #
+    #   RLE  file 21,6 MB, dung lop mat 1.485 ms
+    #   ZIP  file 15,8 MB, dung lop mat 5.024 ms
+    #
+    # Tuc la doi 3,5 giay dung them de bot 5,8 MB tai ve. Hoa von o toc do tai 1,7 MB/s:
+    # cham hon thi ZIP loi, nhanh hon thi RLE loi. Chon ZIP vi file duoc GIU LAI sau lan
+    # dung dau, nen chi tra tien dung MOT lan con tien tai thi tra moi lan - va ban tai
+    # ca zip nhieu tam thi dung luong moi la cho that su dau.
+    #
+    # Doi kieu nen KHONG doi cau truc lop. May in doc anh GOP chu khong doc lop, nen cho
+    # nay chi anh huong den phan mem mo file de xem - ma Photoshop doc ZIP tu lau.
+    layer-zip: ${APP_TIFF_LAYER_ZIP:true}
+    white:
+      # Kenh muc trang (spot channel) cho in DTF: lop trang lot duoi lop mau.
+      enabled: ${APP_TIFF_WHITE_ENABLED:true}
+      # Ten kenh, phai khop dung voi cai RIP cho doi.
+      channel-name: ${APP_TIFF_WHITE_CHANNEL:W1}
+      # Nguong alpha 0..255: tren nguong thi coi la co hinh, can lot trang.
+      alpha-threshold: ${APP_TIFF_WHITE_ALPHA_THRESHOLD:128}
+      # So diem anh co lop trang vao trong moi phia, de lop trang nam LOT trong lop mau.
+      # Hai lop bang nhau thi may keo phim lech nua milimet la lo vien trang quanh hinh.
+      # Tho dang lam tay bang Select > Modify > Contract voi so 1 nen mac dinh cung la 1.
+      # Day la diem anh o do phan giai xuat file: 1 diem o 300 DPI = 0,085 mm.
+      choke-pixels: ${APP_TIFF_WHITE_CHOKE:1}
+      # Do lech cho phep so voi trang tuyet doi khi do xem mot diem co phai nen khong.
+      # Anh JPG bi nen mat du lieu nen nen trang cua no thuong ra 250-255, khong phang.
+      white-tolerance: ${APP_TIFF_WHITE_TOLERANCE:6}
+    # rgb hoac cmyk. Xuong dang dung CMYK vi RIP cua ho nhan dinh dang do.
+    color-mode: ${APP_TIFF_COLOR_MODE:cmyk}
+    # Ho so ICC cua khong gian CMYK dich.
+    #
+    # Mac dinh la U.S. Web Coated (SWOP) v2 - DUNG ho so ma file mau cua tho dang dung,
+    # doc ra tu chinh file do. Chon no vi hai le:
+    #   1. Mau khop voi quy trinh Photoshop xuong dang lam, khong them mot lan lech nua
+    #   2. No 557 KB, trong khi cac ho so CGATS21 deu khoang 3,5 MB - ma ho so duoc NHUNG
+    #      vao TUNG file xuat ra, nen day la 2,9 MB moi tam, tai zip nhieu tam thay ro
+    #
+    # NEN THAY bang ho so cua CHINH MAY IN neu xin duoc tu nha cung cap RIP: no mo ta
+    # dung dac tinh muc va giay cua may do, nen mau sat hon. Dat duong dan tren dia,
+    # hoac "classpath:ten-file.icc" neu bo file vao thu muc resources.
+    cmyk-profile: ${APP_TIFF_CMYK_PROFILE:classpath:color/USWebCoatedSWOP.icc}
   cors:
     # Origin cua frontend. Tren Netlify/Render nho them dung ten mien da cap.
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}

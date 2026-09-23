@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import vn.printnest.export.ExportCache;
 import vn.printnest.file.FileService;
 import vn.printnest.job.JobStore;
 
@@ -37,11 +38,14 @@ public class StorageJanitor {
 
     private final FileService fileService;
     private final JobStore jobStore;
+    private final ExportCache exportCache;
     private final AppProperties properties;
 
-    public StorageJanitor(FileService fileService, JobStore jobStore, AppProperties properties) {
+    public StorageJanitor(FileService fileService, JobStore jobStore,
+                          ExportCache exportCache, AppProperties properties) {
         this.fileService = fileService;
         this.jobStore = jobStore;
+        this.exportCache = exportCache;
         this.properties = properties;
     }
 
@@ -65,6 +69,13 @@ public class StorageJanitor {
         Duration age = Duration.ofHours(retention.hours());
         int jobs = jobStore.purgeOlderThan(age);
         FileService.Purge purge = fileService.purgeOlderThan(age);
+
+        // Ban thanh pham da dung cung phai di theo. Giu lai file cua mot lan ghep da bi
+        // don di la giu mot thu khong ai tai duoc nua - dung kieu ro ri ma he thong nay
+        // vua sua xong o cho khac.
+        if (jobs > 0) {
+            exportCache.clear();
+        }
 
         // Chi ghi log khi that su co don duoc gi. Quet moi gio ma lan nao cung ghi mot
         // dong thi log day nhung dong vo nghia, den luc can tim thi khong thay gi.

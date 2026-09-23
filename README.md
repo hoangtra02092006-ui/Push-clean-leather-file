@@ -126,7 +126,7 @@ Chờ tới khi thấy dòng `Started PrintNestApplication`. Backend chạy ở 
 
 Thư mục lưu file tạm mặc định là `backend/storage/` (đã nằm trong `.gitignore`).
 
-Chạy toàn bộ test (26 test):
+Chạy toàn bộ test (102 test):
 
 ```bash
 cd backend
@@ -186,8 +186,19 @@ npm run build
 | `APP_TRIM_ENABLED` | `true` | Đọc content stream của PDF để lấy đúng vùng có nét vẽ, bỏ khoảng trắng bao quanh. Đặt `false` để quay về lấy trọn khổ trang |
 | `APP_RETENTION_HOURS` | `48` | Giữ file upload, ảnh xem trước và bản ghi lần ghép bao nhiêu giờ rồi tự xoá. Đặt `0` để **tắt hẳn** việc dọn rác |
 | `APP_RETENTION_SWEEP_MINUTES` | `60` | Bao lâu quét dọn một lần |
-| `APP_TIFF_DPI` | `150` | Độ phân giải bản TIF. **Hỏi RIP của xưởng cần bao nhiêu rồi đặt lại.** Gấp đôi DPI là gấp **bốn** lần bộ nhớ |
-| `APP_TIFF_MAX_MEGAPIXELS` | `80` | Trần cứng tính bằng triệu điểm ảnh. Vượt thì báo lỗi rõ ràng thay vì để máy chủ hết bộ nhớ |
+| `APP_TIFF_DPI` | `300` | Độ phân giải bản TIF. Gấp đôi DPI là gấp **bốn** lần bộ nhớ |
+| `APP_TIFF_MAX_MEGAPIXELS` | `100` | Trần cứng tính bằng triệu điểm ảnh. Vượt thì báo lỗi rõ ràng thay vì để máy chủ hết bộ nhớ |
+| `APP_TIFF_COMPRESSION` | `Deflate` | Kiểu nén. Đổi về `LZW` nếu RIP đời cũ không đọc được Deflate |
+| `APP_TIFF_COMPRESSION_QUALITY` | `0.3` | Mức nén 0..1. Số **nhỏ là nhanh**, file to hơn. Nén không mất dữ liệu nên đây chỉ là đánh đổi thời gian lấy dung lượng |
+| `APP_TIFF_COLOR_MODE` | `cmyk` | `rgb` hoặc `cmyk` |
+| `APP_TIFF_CMYK_PROFILE` |  `classpath:color/USWebCoatedSWOP.icc` | Hồ sơ ICC của không gian CMYK đích. **Nên thay bằng hồ sơ của chính máy in** nếu xin được từ nhà cung cấp RIP |
+| `APP_TIFF_TRANSPARENT_LAYER` | `true` | Kèm lớp mang độ trong suốt để mở ra thấy ô caro xám (không có vùng in) thay vì nền trắng. Đổi lại ảnh bị lưu **hai lần** trong file |
+| `APP_TIFF_LAYER_ZIP` | `true` | Nén lớp bằng ZIP. Trên cùng một tấm: ZIP cho file 15,8 MB dựng mất 5,0 s, RLE cho 21,6 MB dựng mất 1,5 s. Đặt `false` để quay về RLE như file mẫu |
+| `APP_TIFF_WHITE_ENABLED` | `true` | Thêm kênh mực trắng lót cho in DTF. Đặt `false` để quay về CMYK thuần 4 kênh |
+| `APP_TIFF_WHITE_CHANNEL` | `W1` | Tên kênh mực trắng, phải khớp đúng với cái RIP chờ đợi |
+| `APP_TIFF_WHITE_ALPHA_THRESHOLD` | `128` | Ngưỡng alpha 0..255: trên ngưỡng thì coi là có hình, cần lót trắng |
+| `APP_TIFF_WHITE_CHOKE` | `1` | Số điểm ảnh co lớp trắng vào trong mỗi phía, để nó nằm **lọt** trong lớp màu. Bằng đúng thao tác `Select → Modify → Contract → 1` |
+| `APP_TIFF_WHITE_TOLERANCE` | `6` | Độ lệch cho phép so với trắng tuyệt đối khi dò nền của ảnh không có kênh trong suốt |
 
 ---
 
