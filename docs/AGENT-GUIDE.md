@@ -122,7 +122,7 @@ cd backend
 ./mvnw clean verify          # Windows: .\mvnw.cmd clean verify
 ```
 
-Yêu cầu: **26/26 test pass**. Trong log phải thấy dòng nghiệm thu:
+Yêu cầu: **102/102 test pass**. Trong log phải thấy dòng nghiệm thu:
 
 ```
 [NGHIEM THU] chieu dai = 478.2 cm | lap day = 92.45% | tiet kiem = 71.9% | so tam = 1

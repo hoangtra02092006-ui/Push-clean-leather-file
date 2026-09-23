@@ -126,7 +126,7 @@ Chờ tới khi thấy dòng `Started PrintNestApplication`. Backend chạy ở 
 
 Thư mục lưu file tạm mặc định là `backend/storage/` (đã nằm trong `.gitignore`).
 
-Chạy toàn bộ test (26 test):
+Chạy toàn bộ test (102 test):
 
 ```bash
 cd backend
