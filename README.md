@@ -205,10 +205,10 @@ npm run build
 | `APP_CUT_MIN_AREA_MM2` | `0.2` | Bỏ qua mảng nhỏ hơn mức này. **Chỉ để lọc hạt bụi** (một điểm ảnh ở 300 DPI là 0,007 mm²). Đặt cao hơn là ăn mất chữ nhỏ |
 | `APP_CUT_STROKE_PT` | `0.25` | Độ dày nét đường cắt |
 | `APP_CUT_SPOT_NAME` | `CutContour` | Tên màu mực riêng. Illustrator và Cutting Master nhận dạng đường cắt bằng **tên** này |
-| `APP_CUT_MARK_LENGTH_MM` | `10.0` | Chiều dài cạnh dấu định vị |
+| `APP_CUT_MARK_LENGTH_MM` | `15.0` | Chiều dài cạnh dấu định vị (1,5 cm) |
 | `APP_CUT_MARK_THICKNESS_MM` | `1.0` | Độ dày nét dấu |
 | `APP_CUT_MARK_TOP_LEFT` · `_TOP_RIGHT` · `_BOTTOM_LEFT` · `_BOTTOM_RIGHT` | `SQUARE_WITH_EDGE` | Hình dấu **từng góc**. `SQUARE_WITH_EDGE` vẽ hai nét ở hai cạnh phía trong, khép ô vuông cùng mép trang. Còn nhận `L`, `SQUARE_OUTLINE`, `SQUARE_FILLED` |
-| `APP_CUT_MARK_CLEARANCE_MM` | `5.0` | Vùng trống bắt buộc quanh dấu. Cộng với dấu là **15 mm** mỗi góc. Có nét vẽ lấn vào thì **từ chối xuất file cắt** — đặt lề ≥ 15 mm cho chắc |
+| `APP_CUT_MARK_CLEARANCE_MM` | `5.0` | Vùng trống bắt buộc quanh dấu. Cộng với dấu là **20 mm** mỗi góc. Có nét vẽ lấn vào thì bản cắt **tự nới trang dài ra** (đều hai đầu, tối đa 20 mm mỗi đầu; bề ngang không đổi) — bản in không đổi |
 
 ---
 

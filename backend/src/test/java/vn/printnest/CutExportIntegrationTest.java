@@ -61,15 +61,20 @@ class CutExportIntegrationTest {
     /** Sai so cho phep khi so mot con so doc tu file voi thong so mong doi. */
     private static final double TOLERANCE_MM = 0.01;
 
+    /** Canh cua o vuong dau dinh vi, theo mac dinh cua he thong. */
+    private static final double MARK_MM = 15;
+
+    /** Dau cong vung trong bat buoc quanh no: cho phai de trong o moi goc. */
+    private static final double ZONE_MM = MARK_MM + 5;
+
     /**
      * Le tam du rong de bon goc con trong cho dau dinh vi.
      *
-     * <p>Dau chiem 10 mm cong 5 mm vung trong la 15 mm, nen le MAC DINH 5 mm cua he thong
-     * KHONG du: hinh dau tien luon nam de vao goc tam. Day khong phai chuyen rieng cua bai
-     * test - xuong muon cat thi phai dat le rong len, va {@code CutComposer} bao dung dieu
-     * do trong thong bao loi.
+     * <p>Dat rong hon {@link #ZONE_MM} de cac bai khac do duoc truong hop KHONG phai noi
+     * trang. Le MAC DINH 5 mm cua he thong thi khong du - khi do ban cat tu noi rong ra,
+     * va do la viec cua bai {@code widensThePageWhenArtworkSitsWhereAMarkMustGo}.
      */
-    private static final double CLEAR_MARGIN_MM = 20;
+    private static final double CLEAR_MARGIN_MM = 25;
 
     @Autowired
     private MockMvc mockMvc;
@@ -138,12 +143,12 @@ class CutExportIntegrationTest {
     /**
      * Bon dau dinh vi: dung kich thuoc, dung cho.
      *
-     * <p>Moi dau ve bang hai hinh chu nhat to day, nam o hai canh PHIA TRONG cach 10 mm tu
+     * <p>Moi dau ve bang hai hinh chu nhat to day, nam o hai canh PHIA TRONG cach 15 mm tu
      * mep trang - hai canh con lai cua o vuong chinh la hai mep giay, nen may cat nhin ra
      * mot o vuong khep kin.
      */
     @Test
-    @DisplayName("Bon dau dung 10 x 1 mm, khep o vuong cung mep trang")
+    @DisplayName("Bon dau dung 15 x 1 mm, khep o vuong cung mep trang")
     void registrationMarksSitInEveryCorner() throws Exception {
         byte[] cut = downloadCut();
         List<double[]> rectangles;
@@ -163,17 +168,17 @@ class CutExportIntegrationTest {
             double longSide = Math.max(rectangle[2], rectangle[3]);
             double shortSide = Math.min(rectangle[2], rectangle[3]);
             assertThat(longSide).as("chieu dai net dau")
-                    .isCloseTo(10.0, org.assertj.core.data.Offset.offset(TOLERANCE_MM));
+                    .isCloseTo(MARK_MM, org.assertj.core.data.Offset.offset(TOLERANCE_MM));
             assertThat(shortSide).as("do day net dau")
                     .isCloseTo(1.0, org.assertj.core.data.Offset.offset(TOLERANCE_MM));
         }
 
         // Moi goc phai co dung hai net, va chung phai KHEP O VUONG cung hai mep trang:
-        // net doc cach mep doc dung 10 mm, net ngang cach mep ngang dung 10 mm.
+        // net doc cach mep doc dung 15 mm, net ngang cach mep ngang dung 15 mm.
         double[][] corners = {{0, 0}, {pageWidth, 0}, {0, pageHeight}, {pageWidth, pageHeight}};
         for (double[] corner : corners) {
             List<double[]> inCorner = rectangles.stream()
-                    .filter(bar -> inCornerBox(bar, corner, 10.0))
+                    .filter(bar -> inCornerBox(bar, corner, MARK_MM))
                     .toList();
 
             assertThat(inCorner)
@@ -190,12 +195,12 @@ class CutExportIntegrationTest {
                     .max().orElseThrow();
 
             assertThat(farthestX)
-                    .as("goc (%.0f, %.0f): hai net phai khep o vuong 10 mm theo chieu ngang",
+                    .as("goc (%.0f, %.0f): hai net phai khep o vuong 15 mm theo chieu ngang",
                             corner[0], corner[1])
-                    .isCloseTo(10.0, org.assertj.core.data.Offset.offset(TOLERANCE_MM));
+                    .isCloseTo(MARK_MM, org.assertj.core.data.Offset.offset(TOLERANCE_MM));
             assertThat(farthestY)
-                    .as("goc (%.0f, %.0f): va 10 mm theo chieu doc", corner[0], corner[1])
-                    .isCloseTo(10.0, org.assertj.core.data.Offset.offset(TOLERANCE_MM));
+                    .as("goc (%.0f, %.0f): va 15 mm theo chieu doc", corner[0], corner[1])
+                    .isCloseTo(MARK_MM, org.assertj.core.data.Offset.offset(TOLERANCE_MM));
         }
     }
 
@@ -221,20 +226,20 @@ class CutExportIntegrationTest {
             bars = rectangles(document.getPage(0));
         }
 
-        // Goc duoi-trai: net doc phai nam o x = 9..10 mm, net ngang o y = 9..10 mm.
+        // Goc duoi-trai: net doc phai nam o x = 14..15 mm, net ngang o y = 14..15 mm.
         // Op vao mep (x = 0 hoac y = 0) la SAI - khi do hai net khong khep duoc o vuong
         // voi mep giay, ma nam de len chinh mep do.
         long verticalBar = bars.stream()
-                .filter(bar -> Math.abs(bar[0] - 9.0) < TOLERANCE_MM)
+                .filter(bar -> Math.abs(bar[0] - (MARK_MM - 1)) < TOLERANCE_MM)
                 .filter(bar -> Math.abs(bar[1]) < TOLERANCE_MM)
                 .count();
         long horizontalBar = bars.stream()
                 .filter(bar -> Math.abs(bar[0]) < TOLERANCE_MM)
-                .filter(bar -> Math.abs(bar[1] - 9.0) < TOLERANCE_MM)
+                .filter(bar -> Math.abs(bar[1] - (MARK_MM - 1)) < TOLERANCE_MM)
                 .count();
 
-        assertThat(verticalBar).as("net doc cach mep trai 9 mm").isEqualTo(1);
-        assertThat(horizontalBar).as("net ngang cach mep duoi 9 mm").isEqualTo(1);
+        assertThat(verticalBar).as("net doc cach mep trai 14 mm").isEqualTo(1);
+        assertThat(horizontalBar).as("net ngang cach mep duoi 14 mm").isEqualTo(1);
 
         long huggingTheEdge = bars.stream()
                 .filter(bar -> Math.abs(bar[0]) < TOLERANCE_MM && Math.abs(bar[1]) < TOLERANCE_MM)
@@ -245,26 +250,116 @@ class CutExportIntegrationTest {
     }
 
     /**
-     * Hinh lan vao cho de dau thi TU CHOI xuat file cat.
+     * Hinh lan vao cho de dau thi TU NOI RONG trang cat ra, khong tu choi nua.
      *
-     * <p>Tha bao loi con hon dua ra mot file chac chan hong khi chay may: camera do nham
-     * dau la may cat lech ca tam phim.
+     * <p>Tam da ghep xong roi moi den luot ban cat, nen bat tho xep lai tam cho thoang goc
+     * la bat lam lai tu dau. Ban cat la file RIENG, khong phai ban in - no duoc phep rong
+     * hon de lay cho dat dau, mien la noi deu bon phia thi hai ban van dong tam.
      *
-     * <p>Ban IN van phai tai duoc binh thuong - chi rieng ban CAT la tu choi.
+     * <p>Chi noi theo CHIEU DAI. Cuon chay lien tuc nen dai them khong ton gi, con be ngang
+     * thi vuong kho cuon 603 mm va muc job toi da 576 mm cua Cutting Master - noi ngang la
+     * may cat khong nhan job. Ma noi ngang cung khong can: day hinh len doc la no ra khoi
+     * o vuong o goc roi.
+     *
+     * <p>Noi bao nhieu la du: mot vung dau la {@link #ZONE_MM}, nen noi toi da bang do la
+     * o vuong phai de trong o goc khong con chua mot diem anh nao cua hinh.
+     *
+     * <p>Ban IN khong bi dong vao, van dung kich thuoc cu.
      */
     @Test
-    @DisplayName("Hinh lan vao cho de dau: tu choi xuat file cat, ban in van tai duoc")
-    void refusesWhenArtworkSitsWhereAMarkMustGo() throws Exception {
-        // Le 0 mm va hinh to gan bang kho: hinh se cham vao goc tam.
+    @DisplayName("Hinh lan vao cho de dau: tu noi DAI trang cat, be ngang giu nguyen")
+    void widensThePageWhenArtworkSitsWhereAMarkMustGo() throws Exception {
+        // Le 0 mm va hinh to gan bang kho: hinh cham thang vao goc tam.
         String jobId = runJob(buildPdf(540, 200), 0, 2);
+        double printLengthMm = sheetLengthMm(jobId);
 
-        mockMvc.perform(get("/api/v1/nesting/jobs/{id}/sheets/0/cut", jobId))
-                .andExpect(status().isUnprocessableEntity());
+        byte[] cut = mockMvc.perform(get("/api/v1/nesting/jobs/{id}/sheets/0/cut", jobId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        double pageWidth;
+        double pageHeight;
+        List<double[]> bars;
+        List<double[]> cutPoints;
+        try (PDDocument document = Loader.loadPDF(cut)) {
+            PDPage page = document.getPage(0);
+            pageWidth = page.getMediaBox().getWidth() * PT_TO_MM;
+            pageHeight = page.getMediaBox().getHeight() * PT_TO_MM;
+            bars = rectangles(page);
+            cutPoints = cutPoints(page);
+        }
+
+        assertThat(pageWidth)
+                .as("be ngang KHONG duoc dong vao: kho cuon 603 mm va muc job 576 mm")
+                .isCloseTo(570.0, org.assertj.core.data.Offset.offset(TOLERANCE_MM));
+
+        double pad = (pageHeight - printLengthMm) / 2;
+        assertThat(pad).as("noi deu hai dau, va khong bao gio qua mot vung dau")
+                .isBetween(0.5, Math.ceil(ZONE_MM) + TOLERANCE_MM);
+
+        double[][] corners = {
+                {0, 0}, {pageWidth, 0}, {0, pageHeight}, {pageWidth, pageHeight}};
+        for (double[] corner : corners) {
+            assertThat(bars.stream().filter(bar -> inCornerBox(bar, corner, MARK_MM)).count())
+                    .as("goc (%.0f, %.0f) van phai co dung hai net dau", corner[0], corner[1])
+                    .isEqualTo(2);
+        }
+
+        // Cho de dau phai SACH: con mot net cat di qua day la camera do nham dau.
+        for (double[] corner : corners) {
+            assertThat(cutPoints).as("khong duong cat nao duoc di vao vung dau o goc "
+                            + "(%.0f, %.0f)", corner[0], corner[1])
+                    .noneMatch(point -> Math.abs(point[0] - corner[0]) < ZONE_MM - TOLERANCE_MM
+                            && Math.abs(point[1] - corner[1]) < ZONE_MM - TOLERANCE_MM);
+        }
 
         mockMvc.perform(get("/api/v1/nesting/jobs/{id}/sheets/0/pdf", jobId))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/nesting/jobs/{id}/sheets/0/tif", jobId))
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * Hinh CACH goc mot doan - le mac dinh 5 mm - thi van phai noi cho du.
+     *
+     * <p>Bai tren dung le 0 mm nen hinh cham thang vao goc, va truong hop do phep do dung
+     * ngay o hang dau tien. Bai nay moi do den phan giua: phai tim hang DAU TIEN co hinh.
+     *
+     * <p>Co that: ban dau toi viet vong lap thoat moi vong trong, vong ngoai chay tiep va
+     * ghi de tri so bang hang CUOI co hinh. Bai tren van xanh - vi hang dau tien da co hinh
+     * nen no dung ngay - con chay that thi noi 1 mm thay vi 15, dau de len hinh.
+     */
+    @Test
+    @DisplayName("Hinh cach goc mot le van duoc noi du, khong noi hut")
+    void widensEnoughWhenArtworkIsSetBackFromTheCorner() throws Exception {
+        String jobId = runJob(buildPdf(200, 180), 5, 12);
+        double printLengthMm = sheetLengthMm(jobId);
+
+        byte[] cut = mockMvc.perform(get("/api/v1/nesting/jobs/{id}/sheets/0/cut", jobId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        double pageHeight;
+        List<double[]> cutPoints;
+        try (PDDocument document = Loader.loadPDF(cut)) {
+            PDPage page = document.getPage(0);
+            pageHeight = page.getMediaBox().getHeight() * PT_TO_MM;
+            cutPoints = cutPoints(page);
+        }
+
+        // Le 5 mm: cho de dau con thieu 20 - 5 = 15 mm.
+        double pad = (pageHeight - printLengthMm) / 2;
+        assertThat(pad).as("phai noi khoang 15 mm, khong duoc noi hut")
+                .isBetween(14.0, Math.ceil(ZONE_MM) + TOLERANCE_MM);
+
+        double[][] corners = {
+                {0, 0}, {570.0, 0}, {0, pageHeight}, {570.0, pageHeight}};
+        for (double[] corner : corners) {
+            assertThat(cutPoints).as("vung dau o goc (%.0f, %.0f) phai sach",
+                            corner[0], corner[1])
+                    .noneMatch(point -> Math.abs(point[0] - corner[0]) < ZONE_MM - TOLERANCE_MM
+                            && Math.abs(point[1] - corner[1]) < ZONE_MM - TOLERANCE_MM);
+        }
     }
 
     @Test
@@ -426,6 +521,24 @@ class CutExportIntegrationTest {
         return rectangles;
     }
 
+    /** Doc cac dinh cua duong cat - lenh {@code m} va {@code l} - doi sang milimet. */
+    private static List<double[]> cutPoints(PDPage page) throws IOException {
+        ByteArrayOutputStream raw = new ByteArrayOutputStream();
+        try (InputStream in = page.getContents()) {
+            in.transferTo(raw);
+        }
+        Matcher matcher = Pattern.compile("([-0-9.]+) ([-0-9.]+) [ml]\\b")
+                .matcher(raw.toString("ISO-8859-1"));
+
+        List<double[]> points = new ArrayList<>();
+        while (matcher.find()) {
+            points.add(new double[]{
+                    Double.parseDouble(matcher.group(1)) * PT_TO_MM,
+                    Double.parseDouble(matcher.group(2)) * PT_TO_MM});
+        }
+        return points;
+    }
+
     /** Hinh chu nhat nay co mot goc dat dung vao diem do khong. */
     private static boolean touches(double[] rectangle, double[] corner) {
         double left = rectangle[0];
@@ -445,6 +558,15 @@ class CutExportIntegrationTest {
         return mockMvc.perform(get("/api/v1/nesting/jobs/{id}/sheets/0/cut", jobId))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray();
+    }
+
+    /** Chieu dai tam da ghep, doc tu ket qua job - de so voi chieu dai trang cat. */
+    private double sheetLengthMm(String jobId) throws Exception {
+        String body = mockMvc.perform(get("/api/v1/nesting/jobs/{id}", jobId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body)
+                .get("result").get("sheets").get(0).get("lengthMm").asDouble();
     }
 
     private String runJob(byte[] pdf, double marginMm, int quantity) throws Exception {

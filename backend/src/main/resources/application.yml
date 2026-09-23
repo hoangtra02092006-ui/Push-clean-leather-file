@@ -145,8 +145,10 @@ app:
     spot-name: ${APP_CUT_SPOT_NAME:CutContour}
     mark:
       # Dau dinh vi o 4 goc, kieu "Graphtec 4 Points Type 1".
-      # Ba so nay doc tu anh chup man hinh Cutting Master cua xuong.
-      length-mm: ${APP_CUT_MARK_LENGTH_MM:10.0}
+      #
+      # Canh 15 mm (1,5 cm) la so xuong chot. Anh chup Cutting Master ghi 10 mm, nhung tho
+      # muon dau to hon cho camera de bat, nen lay 15. Do day 1 mm thi doc tu anh chup do.
+      length-mm: ${APP_CUT_MARK_LENGTH_MM:15.0}
       thickness-mm: ${APP_CUT_MARK_THICKNESS_MM:1.0}
       # Hinh dau khai RIENG cho tung goc, de sau nay doi mot goc khong keo theo ba goc kia.
       # Mac dinh ca bon deu SQUARE_WITH_EDGE.
@@ -166,9 +168,11 @@ app:
       top-right: ${APP_CUT_MARK_TOP_RIGHT:SQUARE_WITH_EDGE}
       bottom-left: ${APP_CUT_MARK_BOTTOM_LEFT:SQUARE_WITH_EDGE}
       bottom-right: ${APP_CUT_MARK_BOTTOM_RIGHT:SQUARE_WITH_EDGE}
-      # Vung trong BAT BUOC quanh dau. Co hinh lan vao day thi camera cua may do nham dau,
-      # nen gap truong hop do thi TU CHOI xuat file - tha bao loi con hon dua ra mot file
-      # chac chan hong khi chay may.
+      # Vung trong BAT BUOC quanh dau. Co hinh lan vao day thi camera cua may do nham dau.
+      #
+      # Gap truong hop do thi ban cat TU NOI DAI trang ra, deu hai dau, cho den khi bon goc
+      # sach. BE NGANG giu nguyen: no vuong kho cuon 603 mm va muc job toi da 576 mm cua
+      # Cutting Master. Noi toi da bang mot vung dau, tuc la length-mm cong so nay.
       clearance-mm: ${APP_CUT_MARK_CLEARANCE_MM:5.0}
   cors:
     # Origin cua frontend. Tren Netlify/Render nho them dung ten mien da cap.
