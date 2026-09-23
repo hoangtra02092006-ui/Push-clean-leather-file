@@ -280,19 +280,50 @@ Chia cho tỷ lệ lấp đầy chính là để **tính cả phần giấy bỏ
 
 ---
 
-## 5. `GET /api/v1/nesting/jobs/{jobId}/sheets/{index}/pdf` — Tải một tấm
+## 5. `GET .../sheets/{index}/pdf` và `.../sheets/{index}/tif` — Tải một tấm
 
-Trả về `application/pdf` kèm `Content-Disposition: attachment`.
+Hai định dạng, **cùng một bố trí**: cả hai đều dựng lại từ `PdfComposer` nên không thể lệch nhau.
+
+| Đuôi | Trả về | Dùng khi |
+|---|---|---|
+| `/pdf` | `application/pdf` | Giữ nguyên vector, nét sắc ở mọi mức phóng |
+| `/tif` | `image/tiff` (nén LZW, RGB) | RIP chỉ nhận ảnh bitmap |
 
 Tên file có sẵn kích thước để thợ không phải mở ra kiểm tra:
 
 ```
-minh-tri-a7e3f019-tam01-57x478cm.pdf
+minh-tri-a7e3f019-tam01-57x100cm.pdf
+minh-tri-a7e3f019-tam01-57x100cm.tif
 ```
 
 `index` bắt đầu từ **0**.
 
-**Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`.
+### Về bản TIF
+
+TIF là ảnh bitmap nên phải chốt trước độ phân giải, đặt bằng `APP_TIFF_DPI` (mặc định 150). **Gấp đôi DPI là gấp bốn lần bộ nhớ** — một tấm 57 × 100 cm:
+
+| DPI | Kích thước | Bộ nhớ một ảnh |
+|---:|---|---:|
+| 150 | 3.366 × 5.906 | 80 MB |
+| 300 | 6.732 × 11.811 | 318 MB |
+| 600 | 13.465 × 23.622 | 1,3 GB |
+
+Vì vậy có **trần cứng** `APP_TIFF_MAX_MEGAPIXELS` (mặc định 80 triệu điểm). Vượt trần thì trả `TIFF_TOO_LARGE` kèm hướng xử lý, thay vì để máy chủ hết bộ nhớ rồi tự khởi động lại. **Bản PDF không vướng giới hạn này.**
+
+Thông số của file xuất ra, đọc thẳng từ tag trong file:
+
+| Tag | Giá trị | Vì sao |
+|---|---|---|
+| `Compression` | LZW | Không mất dữ liệu. Bản in không được phép có nhiễu quanh nét vẽ |
+| `PhotometricInterpretation` | RGB, 8 bit mỗi kênh | Giữ nguyên màu như bản PDF, không có kênh trong suốt |
+| `XResolution` / `YResolution` | = `APP_TIFF_DPI` | **Thiếu là file nguy hiểm**: phần mềm sẽ đoán 72 DPI và tấm 57 cm in ra thành 2,4 mét |
+| `ResolutionUnit` | 2 (inch) | Đi kèm hai tag trên mới có nghĩa |
+| `RowsPerStrip` | 64 | Mặc định của Java là **1** — ảnh 4.836 hàng thành 4.836 dải, phình bảng tag và làm LZW khởi động lại từ điển mỗi hàng. Đặt 64 làm file nhẹ đi gần 5 lần |
+| `ICCProfile` | sRGB (6.876 byte) | Không có thì file chỉ nói "đây là RGB" mà không nói RGB **nào**, RIP phải đoán. Đoán sai thì màu lệch mà không chỗ nào báo lỗi |
+
+Ghi metadata hỏng thì **từ chối phát hành file** chứ không phát hành một file sẽ in sai kích thước.
+
+**Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`, `TIFF_TOO_LARGE`.
 
 ---
 
@@ -300,7 +331,18 @@ minh-tri-a7e3f019-tam01-57x478cm.pdf
 
 Trả về file `.zip` chứa toàn bộ các tấm, tên file bên trong giống mục 5.
 
-**Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`.
+| Tham số | Mặc định | Giá trị |
+|---|---|---|
+| `format` | `pdf` | `pdf` hoặc `tif` |
+
+```
+GET .../export.zip            -> minh-tri-a7e3f019-pdf.zip
+GET .../export.zip?format=tif -> minh-tri-a7e3f019-tif.zip
+```
+
+Định dạng lạ bị **báo lỗi ngay** chứ không lặng lẽ trả về PDF — trả nhầm định dạng thì thợ chỉ phát hiện khi file đã ở trên máy in.
+
+**Lỗi:** `JOB_NOT_FOUND`, `JOB_NOT_READY`, `INVALID_REQUEST`, `TIFF_TOO_LARGE`.
 
 ---
 
@@ -329,6 +371,7 @@ Mọi lỗi đều trả về cùng một cấu trúc:
 | `FILE_NOT_FOUND` | 404 | Không có file với id đó |
 | `JOB_NOT_READY` | 409 | Job chưa chạy xong nên chưa có gì để tải |
 | `NESTING_FAILED` | 500 | Thuật toán không hội tụ hoặc số lượng bị lệch |
+| `TIFF_TOO_LARGE` | 422 | Tấm quá lớn để dựng TIF ở độ phân giải đang đặt. Giảm `APP_TIFF_DPI` hoặc đặt chiều dài tối đa mỗi file ngắn lại |
 | `INTERNAL_ERROR` | 500 | Lỗi không lường trước. Stack trace chỉ ghi vào log, không lộ ra ngoài |
 
 Frontend phân nhánh theo `error.code`, **không** parse chuỗi `message`.

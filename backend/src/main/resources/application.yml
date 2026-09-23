@@ -32,6 +32,13 @@ app:
     hours: ${APP_RETENTION_HOURS:48}
     # Bao lau quet mot lan.
     sweep-minutes: ${APP_RETENTION_SWEEP_MINUTES:60}
+  tiff:
+    # Do phan giai ban TIF. Hoi RIP cua xuong can bao nhieu roi dat lai bien nay.
+    # Gap doi DPI la gap BON lan bo nho: 57x100cm o 150 DPI la 80 MB, o 300 DPI la 318 MB.
+    dpi: ${APP_TIFF_DPI:150}
+    # Tran cung, tinh bang trieu diem anh. Vuot qua thi bao loi ro rang chu khong de
+    # may chu het bo nho. 80 du cho tam 57 x 100 cm o 300 DPI.
+    max-megapixels: ${APP_TIFF_MAX_MEGAPIXELS:80}
   cors:
     # Origin cua frontend. Tren Netlify/Render nho them dung ten mien da cap.
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}

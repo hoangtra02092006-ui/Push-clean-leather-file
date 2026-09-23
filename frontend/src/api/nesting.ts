@@ -21,12 +21,15 @@ export async function getJob(jobId: string): Promise<Job> {
   return data
 }
 
-/** URL tai PDF cua mot tam. */
-export function sheetPdfUrl(jobId: string, index: number): string {
-  return `${API_BASE_URL}/api/v1/nesting/jobs/${jobId}/sheets/${index}/pdf`
+/** Hai dinh dang file thanh pham. */
+export type ExportFormat = 'pdf' | 'tif'
+
+/** URL tai mot tam, dinh dang tuy chon. */
+export function sheetFileUrl(jobId: string, index: number, format: ExportFormat): string {
+  return `${API_BASE_URL}/api/v1/nesting/jobs/${jobId}/sheets/${index}/${format}`
 }
 
-/** URL tai tat ca cac tam duoi dang .zip. */
-export function exportZipUrl(jobId: string): string {
-  return `${API_BASE_URL}/api/v1/nesting/jobs/${jobId}/export.zip`
+/** URL tai tat ca cac tam duoi dang .zip, dinh dang tuy chon. */
+export function exportZipUrl(jobId: string, format: ExportFormat = 'pdf'): string {
+  return `${API_BASE_URL}/api/v1/nesting/jobs/${jobId}/export.zip?format=${format}`
 }

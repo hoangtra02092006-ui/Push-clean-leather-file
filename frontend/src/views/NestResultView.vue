@@ -17,7 +17,7 @@ import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppTable from '@/components/ui/AppTable.vue'
 import ResultSummary from '@/components/nesting/ResultSummary.vue'
 import SheetPreview from '@/components/nesting/SheetPreview.vue'
-import { exportZipUrl, sheetPdfUrl } from '@/api/nesting'
+import { exportZipUrl, sheetFileUrl } from '@/api/nesting'
 import { USE_MOCK } from '@/api/client'
 import { formatCm, formatPercent } from '@/api/units'
 import { useNestingJobStore } from '@/stores/nestingJob'
@@ -37,7 +37,7 @@ const sheetColumns = [
   { label: 'Kích thước (cm)', align: 'right' as const },
   { label: 'Số hình', align: 'right' as const },
   { label: 'Lấp đầy', align: 'right' as const },
-  { label: '', align: 'right' as const },
+  { label: 'Tải về', align: 'right' as const },
 ]
 
 const sheets = computed(() => store.result?.sheets ?? [])
@@ -124,15 +124,27 @@ function retry() {
             <td class="col-num">{{ sheet.placements.length }}</td>
             <td class="col-num">{{ formatPercent(sheet.fillRate) }}%</td>
             <td class="text-right">
-              <a
-                class="download"
-                :href="sheetPdfUrl(jobId, sheet.index)"
-                target="_blank"
-                rel="noopener"
-                @click="guardDownload"
-              >
-                Tải PDF
-              </a>
+              <span class="downloads">
+                <a
+                  class="download download--primary"
+                  :href="sheetFileUrl(jobId, sheet.index, 'tif')"
+                  target="_blank"
+                  rel="noopener"
+                  @click="guardDownload"
+                >
+                  TIF
+                </a>
+                <span class="downloads__sep" aria-hidden="true">·</span>
+                <a
+                  class="download download--muted"
+                  :href="sheetFileUrl(jobId, sheet.index, 'pdf')"
+                  target="_blank"
+                  rel="noopener"
+                  @click="guardDownload"
+                >
+                  PDF
+                </a>
+              </span>
             </td>
           </tr>
         </AppTable>
@@ -156,16 +168,34 @@ function retry() {
         <SheetPreview v-if="currentSheet" :sheet="currentSheet" />
       </AppCard>
 
+      <!--
+        Hai lựa chọn tải tất cả. TIF để trước và là nút đậm duy nhất của màn này, vì đó
+        là định dạng xưởng dùng để đưa thẳng vào máy; PDF là nút phụ cho ai cần bản vector.
+        Chỉ một nút primary — đúng quy ước của hệ thống thiết kế.
+      -->
       <div class="actions">
         <AppButton variant="secondary" @click="retry">Ghép lại với tham số khác</AppButton>
+
+        <span class="spacer" />
+
         <a
-          class="btn-link"
-          :href="exportZipUrl(jobId)"
+          class="btn-link btn-link--ghost"
+          :href="exportZipUrl(jobId, 'pdf')"
           target="_blank"
           rel="noopener"
           @click="guardDownload"
         >
-          Tải tất cả (.zip)
+          Tải tất cả PDF
+        </a>
+        <a
+          class="btn-link"
+          :href="exportZipUrl(jobId, 'tif')"
+          target="_blank"
+          rel="noopener"
+          @click="guardDownload"
+        >
+          Tải tất cả TIF
+          <span class="btn-link__tag">đề xuất</span>
         </a>
       </div>
     </template>
@@ -207,16 +237,41 @@ function retry() {
   font-weight: 550;
 }
 
+.downloads {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.downloads__sep {
+  color: var(--c-border-strong);
+}
+
 .download {
   font-size: var(--fs-sm);
   font-weight: 550;
 }
 
+/* TIF là định dạng đề xuất nên đậm hơn; PDF vẫn bấm được nhưng lùi về sau một bậc. */
+.download--primary {
+  font-weight: 650;
+}
+
+.download--muted {
+  color: var(--c-text-soft);
+  font-weight: 500;
+}
+
 .actions {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
   gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+/* Đẩy nhóm nút tải về sát mép phải, tách hẳn khỏi nút "ghép lại". */
+.spacer {
+  flex: 1;
 }
 
 /* Nút chính của màn này là một thẻ <a> vì nó tải file thật, không phải gọi JS. */
@@ -237,5 +292,27 @@ function retry() {
 .btn-link:hover {
   background: var(--c-accent-hover);
   text-decoration: none;
+}
+
+.btn-link__tag {
+  margin-left: var(--s-2);
+  padding: 2px var(--s-2);
+  border-radius: var(--r-sm);
+  background: rgb(255 255 255 / 22%);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+}
+
+/* Bản PDF: vẫn là một hành động đầy đủ, chỉ không phải hành động chính. */
+.btn-link--ghost {
+  background: none;
+  border: 1px solid var(--c-border-strong);
+  color: var(--c-text);
+}
+
+.btn-link--ghost:hover {
+  background: var(--c-bg);
+  border-color: var(--c-accent);
+  color: var(--c-accent);
 }
 </style>

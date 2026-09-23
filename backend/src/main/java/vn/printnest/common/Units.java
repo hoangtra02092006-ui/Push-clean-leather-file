@@ -18,6 +18,16 @@ public final class Units {
     private Units() {
     }
 
+    /**
+     * Milimet -> so diem anh o mot do phan giai cho truoc.
+     *
+     * <p>Dung khi raster hoa ban in ra TIFF. De o day chu khong tinh thang trong
+     * {@code TiffComposer} vi moi phep doi don vi cua he thong deu phai nam mot cho.
+     */
+    public static long mmToPixels(double mm, int dpi) {
+        return Math.round(mm / MM_PER_INCH * dpi);
+    }
+
     /** Milimet -> don vi noi bo, lam tron len de khong bao gio xep chat hon thuc te. */
     public static int mmToCmmCeil(double mm) {
         return (int) Math.ceil(mm * CMM_PER_MM - 1e-9);

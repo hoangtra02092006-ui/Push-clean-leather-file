@@ -186,6 +186,8 @@ npm run build
 | `APP_TRIM_ENABLED` | `true` | Đọc content stream của PDF để lấy đúng vùng có nét vẽ, bỏ khoảng trắng bao quanh. Đặt `false` để quay về lấy trọn khổ trang |
 | `APP_RETENTION_HOURS` | `48` | Giữ file upload, ảnh xem trước và bản ghi lần ghép bao nhiêu giờ rồi tự xoá. Đặt `0` để **tắt hẳn** việc dọn rác |
 | `APP_RETENTION_SWEEP_MINUTES` | `60` | Bao lâu quét dọn một lần |
+| `APP_TIFF_DPI` | `150` | Độ phân giải bản TIF. **Hỏi RIP của xưởng cần bao nhiêu rồi đặt lại.** Gấp đôi DPI là gấp **bốn** lần bộ nhớ |
+| `APP_TIFF_MAX_MEGAPIXELS` | `80` | Trần cứng tính bằng triệu điểm ảnh. Vượt thì báo lỗi rõ ràng thay vì để máy chủ hết bộ nhớ |
 
 ---
 

@@ -51,7 +51,7 @@ Những điều này **không bao giờ** được vi phạm. Nếu một yêu c
 2. **Bảo toàn số lượng.** Tổng hình đặt ra = tổng số lượng yêu cầu. Không thiếu, không thừa.
 3. **Không chồng lấn, không vượt khổ, đủ khoảng hở** `gap` giữa mọi cặp hình. Ở chế độ `FREE`, khung bao được phép lồng nhau nhưng **nét vẽ thật thì tuyệt đối không** — mọi ô trống trả lại cho packer phải đã cách nét vẽ ít nhất một `gap`.
 4. **Tất định.** Cùng đầu vào → cùng đầu ra. Mọi `Random` phải gieo hạt cố định; mọi `sort` phải có tie-break tới `id`.
-5. **Không raster hoá PDF.** File nguồn PDF nhúng bằng `LayerUtility.importPageAsForm`, giữ nguyên vector.
+5. **Không raster hoá PDF.** File nguồn PDF nhúng bằng `LayerUtility.importPageAsForm`, giữ nguyên vector. **Ngoại lệ duy nhất:** bản TIF (`TiffComposer`) — đó là ảnh bitmap theo đúng định nghĩa, dành cho RIP chỉ nhận ảnh. Bản PDF vẫn là bản chính và vẫn giữ vector; TIF chỉ được **thêm bên cạnh**, không bao giờ thay thế.
 6. **Số nguyên 1/100 mm** trong engine. Không cộng dồn số thực.
 7. **Đơn vị:** API luôn **mm**, giao diện luôn **cm**. Quy đổi chỉ được nằm ở `Units.java` và `src/api/units.ts`.
 8. **Không màn hình trắng.** Mọi trạng thái rỗng/đang tải/lỗi đều phải có `AppEmptyState` hoặc `AppSpinner`.
@@ -91,6 +91,9 @@ Sau mỗi lần đổi schema, chạy lại kịch bản demo ở mục 6.
 | Kích thước báo ra ngoài lấy từ hộp A, `PdfComposer` lại vẽ theo hộp B | Hình bị co lại hoặc lệch đúng bằng phần chênh — in ra sai kích thước | Cả hai phải dùng **cùng** `StoredFile.contentBox`, không dùng `form.getBBox()` |
 | Tìm vùng có hình bằng cách quét pixel không trắng | Hình tô màu trắng bị coi là khoảng trống rồi cắt mất | Đọc content stream (`PdfContentBoxFinder`), không quét ảnh |
 | Quên trừ diện tích hốc lõm khỏi cận dưới tìm nhị phân | Cận dưới cao hơn lời giải tối ưu → tự chặn mất đúng cái lợi vừa tạo ra | Dùng `Piece.netArea()` chứ không phải `area()` |
+| Raster hoá một tấm lớn mà không tính trước số điểm ảnh | Bộ nhớ tăng theo **bình phương** DPI: 57×100cm ở 150 DPI là 80 MB, ở 300 DPI là 318 MB, ở 600 DPI là 1,3 GB. Một yêu cầu đủ làm JVM hết chỗ | Tính trước số điểm ảnh và chặn bằng `app.tiff.max-megapixels`, báo lỗi kèm cách xử lý |
+| Bắt lỗi ghi metadata rồi chỉ ghi cảnh báo | File vẫn phát hành nhưng thiếu độ phân giải → in sai kích thước, chỉ phát hiện khi giấy đã chạy. Log cảnh báo không ai đọc | Metadata hỏng thì **từ chối phát hành file**; và test phải **đọc ngược tag ra**, kiểm số điểm ảnh thôi thì không bắt được |
+| Ghi TIFF mà quên trường độ phân giải | Phần mềm mở ra đoán 72 DPI → tấm 57 cm in thành 2,4 mét | Ghi `ResolutionUnit` + `XResolution`/`YResolution` vào metadata, có test đối chiếu số điểm ảnh với kích thước thật |
 | Viết hàm dọn dẹp rồi không gắn lịch gọi nó | `purgeOlderThan()` nằm không từ đầu, đĩa và RAM phình vô hạn — hỏng kiểu chậm, vài tuần sau mới sập | Có hàm dọn thì phải có `@Scheduled` gọi nó **trong cùng lần sửa**, kèm test chứng minh đã dọn thật |
 | Dọn bộ nhớ mà quên một trong các map | Xoá file trên đĩa nhưng `previewCache` và bản đồ chiếm chỗ vẫn nằm lại → RAM không bao giờ về mức nghỉ | Dọn đủ **ba chỗ**: `files`, `previewCache`, và file trên đĩa |
 | Tính tỷ lệ lấp đầy bằng **tổng** diện tích khung bao | Ở chế độ xếp lồng, khung bao được phép lồng nhau → phần giấy chung bị đếm hai lần → lấp đầy 100,3% và "giấy bỏ đi" âm | Lấy **hợp** bằng `Coverage.of()`; chế độ lưới không chồng nhau nên hợp = tổng, số cũ không xê dịch |
