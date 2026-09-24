@@ -26,7 +26,30 @@ RUN mkdir -p /app/storage && chown -R printnest:printnest /app
 USER printnest
 
 ENV APP_STORAGE_PATH=/app/storage
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75"
+# Bon tuy chon nay deu de KHONG bi he dieu hanh giet trong container 2 GB.
+#
+# MaxRAMPercentage=60 (truoc la 75). Dung TIF xai nhieu bo nho NGOAI heap: ImageIO,
+# chuyen mau ICC va PDFBox deu cap phat ngoai. Heap 75% cua may 2 GB la 1,5 GB, cong phan
+# ngoai do la RSS vuot 2 GB - luc do he dieu hanh giet thang tien trinh, KHONG phai JVM
+# nem OutOfMemoryError, nen khong co cho nao bat duoc. Da xay ra that tren Render:
+# "Ran out of memory (used over 2GB)", may chu khoi dong lai va moi lan ghep dang giu
+# trong bo nho mat sach - tho bam tai TIF thi nhan JOB_NOT_FOUND.
+#
+# Ba tuy chon con lai de TRA BO NHO LAI cho he dieu hanh luc ranh. Heap da no ra thi JVM
+# giu nguyen phan da cap phat, nen do thi RAM tren Render nam phang o 80% suot dem du CPU
+# bang 0. Lan xuat TIF sau chi can xin them vai tram MB la cham tran.
+#   UseG1GC                        chon ro G1: tren may 1 CPU, JVM mac dinh chon SerialGC,
+#                                  ma SerialGC khong co co che thu hoi dinh ky
+#   G1PeriodicGCInterval=60000     ranh thi cu 60 giay chay mot chu ky don, va tra lai
+#                                  phan heap khong dung
+#   G1PeriodicGCSystemLoadThreshold=0  khong xet tai he thong, cu den gio la chay
+#   Max/MinHeapFreeRatio=30/10     don xong thi co heap lai, chi chua toi da 30% cho trong
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=60 \
+-XX:+UseG1GC \
+-XX:G1PeriodicGCInterval=60000 \
+-XX:G1PeriodicGCSystemLoadThreshold=0 \
+-XX:MinHeapFreeRatio=10 \
+-XX:MaxHeapFreeRatio=30"
 
 EXPOSE 8080
 # PORT do nen tang (Render/Railway) bom vao; application.yml da doc bien nay.

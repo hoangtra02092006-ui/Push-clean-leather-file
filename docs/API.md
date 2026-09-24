@@ -261,18 +261,14 @@ Một dòng cho mỗi loại hình đã tải lên, **sắp theo `categoryIndex`
 `lengthMm` là con số chủ xưởng dùng để chia tiền giấy, vì giấy tính tiền theo **mét dài** chứ không theo mét vuông:
 
 ```
-lengthMm = tổng chiều dài × (diện tích giấy mẫu này chiếm / tổng diện tích bị phủ)
+lengthMm = tổng chiều dài × (diện tích các bản của mẫu này / tổng diện tích mọi bản)
 ```
 
-Viết theo cách quen thuộc hơn thì tương đương:
+Phần giấy bỏ đi được **chia đều vào đầu mỗi mẫu theo diện tích** — công bằng, vì không mẫu nào một mình gây ra chỗ trống. Cộng các dòng lại đúng bằng `totalLengthMm`, không dư một sai số làm tròn nào.
 
-```
-lengthMm = (diện tích giấy mẫu này chiếm / diện tích giấy đã dùng) ÷ tỷ lệ lấp đầy × tổng chiều dài
-```
-
-Chia cho tỷ lệ lấp đầy chính là để **tính cả phần giấy bỏ đi vào đầu mỗi mẫu** — công bằng, vì không mẫu nào một mình gây ra chỗ trống. Bản rút gọn ở trên cho cùng kết quả mà cộng lại đúng tổng, không dư một sai số làm tròn nào.
-
-> **"Diện tích giấy mẫu này chiếm" đếm mỗi chỗ đúng MỘT lần.** Ở chế độ `FREE` và `TRUE_SHAPE`, khung bao của hai hình được phép lồng vào nhau; chỗ nào hai khung bao cùng trùm thì tính cho hình đứng trước trong danh sách. Hình nhỏ chui gọn vào góc trống của hình lớn **không tốn thêm mét giấy nào** nên chiều dài của nó gần bằng 0 — đúng như thực tế.
+> **Chia theo diện tích RIÊNG của từng bản, không theo phần giấy nó chiếm chỗ riêng.** Hai cách cho cùng kết quả ở chế độ `ORTHOGONAL` vì khung bao không chồng nhau. Nhưng ở `FREE` và `TRUE_SHAPE` khung bao **được phép** lồng nhau, và cách cũ trả về **0** cho mẫu nào chui gọn vào khung mẫu khác. Đo trên một đơn thật của xưởng: mẫu 8 × 0,9 cm, 11 bản, 83 cm² giấy, bảng ghi **0 cm** — tức khách đó được miễn phí giấy. Xưởng chia tiền theo cột này nên đó là sai tiền thật.
+>
+> Nói cách khác: cái lợi do xếp lồng tiết kiệm được giờ **chia đều cho mọi mẫu** theo diện tích, thay vì tặng trọn cho mẫu chui vào trong.
 
 > **Lưu ý về `fillRate` ở chế độ `FREE`.** Tỷ lệ lấp đầy được tính trên diện tích **khung bao**. Ở chế độ `FREE` các khung bao được phép lồng nhau, nên phần lồng bị đếm hai lần và `fillRate` cao hơn thực tế. Con số đáng tin để so sánh hai chế độ là **`totalLengthMm`** — đó cũng là thứ xưởng trả tiền.
 

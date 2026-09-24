@@ -39,6 +39,18 @@ app:
     # Tran cung, tinh bang trieu diem anh. Vuot qua thi bao loi ro rang chu khong de
     # may chu het bo nho. 100 du cho tam 57 x 100 cm o 300 DPI (79,5 trieu diem).
     max-megapixels: ${APP_TIFF_MAX_MEGAPIXELS:100}
+    # Phan heap duoc phep dung cho MOT tam.
+    #
+    # max-megapixels o tren la tran CO DINH nen no khong biet may chu that co bao nhieu
+    # RAM: 100 trieu diem o CMYK kem kenh trang la 1 GB - qua thua tren mot may 512 MB.
+    #
+    # Ma het bo nho o muc container thi JVM bi HE DIEU HANH giet, khong co ngoai le nao
+    # de bat: nen tang tra 502, may chu khoi dong lai, va MOI LAN GHEP dang giu trong bo
+    # nho mat sach - tho bam tai TIF thi nhan JOB_NOT_FOUND cho lan ghep vua chay xong.
+    #
+    # Nen do theo heap that. 0,5 de chua cho luc ghi file, nen Servlet va cac yeu cau khac
+    # chay song song.
+    max-heap-fraction: ${APP_TIFF_MAX_HEAP_FRACTION:0.5}
     # Kieu nen. Ca hai deu khong mat du lieu.
     #
     # Deflate nhanh hon LZW khoang 40% va cho file nho hon khoang 28% - do doc tren mot

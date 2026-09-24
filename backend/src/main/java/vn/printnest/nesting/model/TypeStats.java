@@ -52,26 +52,32 @@ public record TypeStats(
      * <p>Thu tu tra ve luon theo {@code categoryIndex} tang dan - bat buoc, vi ket qua
      * phai TAT DINH: cung dau vao thi cung dau ra, ke ca thu tu dong trong bang.
      *
-     * <p>Chieu dai cua moi mau = tong chieu dai nhan ty le giay mau do chiem cho RIENG.
-     * Viet cach khac, dung cong thuc quen thuoc hon:
+     * <p>Chieu dai cua moi mau = tong chieu dai nhan ty le dien tich mau do chiem:
      *
      * <pre>
-     *   chieu dai mau i = (dien tich giay mau i chiem / dien tich giay da dung)
-     *                     / ty le lap day chung
+     *   chieu dai mau i = dien tich cac ban cua mau i / tong dien tich moi ban
      *                     x tong chieu dai
      * </pre>
      *
-     * Hai cach cho cung mot ket qua vi dien tich giay da dung bi khu di; ban rut gon
-     * o duoi con co loi la cong cac dong lai ra DUNG tong chieu dai, khong du mot sai so
-     * lam tron nao.
+     * Cong cac dong lai ra DUNG tong chieu dai, khong du mot sai so lam tron nao.
+     *
+     * <p><b>Chia theo dien tich RIENG cua tung ban, khong theo phan giay no chiem cho
+     * rieng.</b> Hai cach cho cung ket qua o che do khung chu nhat - khung bao khong
+     * chong nhau nen hai so bang nhau. Nhung o hai che do xep long, khung bao DUOC phep
+     * chong nhau, va cach cu tra ve 0 cho mau nao chui gon vao khung mau khac. Do that
+     * tren mot don cua xuong: mau 8 x 0,9 cm, 11 ban, 83 cm2 giay, bang ghi 0 cm - tuc
+     * la khach do duoc mien phi giay. Xuong chia tien giay theo cot nay nen do la sai
+     * tien that.
+     *
+     * <p>Noi cach khac: cai loi do xep long tiet kiem duoc gio chia DEU cho moi mau theo
+     * dien tich, thay vi tang tron cho mau chui vao trong.
      *
      * @param sheets         cac tam da dan khuon
-     * @param coverage       dien tich giay tung loai chiem cho RIENG, da dem moi cho mot lan
      * @param totalLengthMm  tong chieu dai cuon cua ca lan ghep
      */
-    public static List<TypeStats> from(List<Sheet> sheets, Coverage coverage, double totalLengthMm) {
+    public static List<TypeStats> from(List<Sheet> sheets, double totalLengthMm) {
         Map<Integer, Accumulator> byCategory = new LinkedHashMap<>();
-        double coveredMm2 = coverage.totalAreaMm2();
+        double totalShapeMm2 = 0;
 
         for (Sheet sheet : sheets) {
             for (Placement p : sheet.placements()) {
@@ -80,6 +86,7 @@ public record TypeStats(
                                 p.sourceWMm(), p.sourceHMm()));
                 acc.pieces++;
                 acc.areaMm2 += p.wMm() * p.hMm();
+                totalShapeMm2 += p.wMm() * p.hMm();
             }
         }
 
@@ -93,11 +100,8 @@ public record TypeStats(
                     Units.round2(acc.widthMm),
                     Units.round2(acc.heightMm),
                     Units.round2(acc.areaMm2),
-                    // Chia theo dien tich giay CHIEM CHO RIENG chu khong theo tong khung
-                    // bao: hai khung bao long vao nhau thi phan chung chi duoc tinh mot
-                    // lan, neu khong cong cac dong lai se vuot qua tong chieu dai.
-                    coveredMm2 > 0
-                            ? Units.round2(totalLengthMm * coverage.areaOf(acc.categoryIndex) / coveredMm2)
+                    totalShapeMm2 > 0
+                            ? Units.round2(totalLengthMm * acc.areaMm2 / totalShapeMm2)
                             : 0));
         }
         stats.sort(Comparator.comparingInt(TypeStats::categoryIndex));

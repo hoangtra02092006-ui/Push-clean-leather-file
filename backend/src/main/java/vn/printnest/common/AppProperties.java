@@ -161,6 +161,13 @@ public record AppProperties(Storage storage, Cors cors, Trim trim, Retention ret
      * @param dpi            do phan giai. 300 la muc chuan cho in an
      * @param maxMegapixels  tran cung: tam lon hon muc nay thi bao loi ro rang thay vi de
      *                       may chu het bo nho roi tu khoi dong lai
+     * @param maxHeapFraction phan bo nho JVM duoc phep dung cho MOT tam, 0..1.
+     *                       {@code maxMegapixels} la tran co dinh nen no khong biet may
+     *                       chu that co bao nhieu RAM: 100 trieu diem o che do CMYK kem
+     *                       kenh trang la 1 GB, qua thua tren mot may 512 MB. Ma het bo
+     *                       nho o muc container thi JVM bi HE DIEU HANH giet - khong co
+     *                       ngoai le nao de bat, may chu khoi dong lai va moi lan ghep
+     *                       dang giu trong bo nho mat sach. Nen phai do theo heap that
      * @param compression    kieu nen TIFF: {@code Deflate} (mac dinh) hoac {@code LZW}
      *                       (duoc moi RIP doi cu ho tro)
      * @param compressionQuality muc nen 0..1. So NHO la nhanh va file to hon. Do that
@@ -182,9 +189,14 @@ public record AppProperties(Storage storage, Cors cors, Trim trim, Retention ret
      *                       RLE 4.738.303 byte mat 1.330 ms, ZIP 2.542.473 byte mat 735 ms
      * @param white          cau hinh kenh muc trang (spot channel) cho in DTF
      */
-    public record Tiff(int dpi, int maxMegapixels, String compression,
+    public record Tiff(int dpi, int maxMegapixels, double maxHeapFraction, String compression,
                        double compressionQuality, String colorMode, String cmykProfile,
                        boolean transparentLayer, boolean layerZip, White white) {
+
+        /** So byte mot tam duoc phep chiem, suy tu heap that cua may chu dang chay. */
+        public long maxBytesPerSheet() {
+            return (long) (Runtime.getRuntime().maxMemory() * maxHeapFraction);
+        }
 
         /**
          * Kenh muc trang (spot channel) cho in DTF.

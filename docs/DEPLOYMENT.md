@@ -85,7 +85,7 @@ Xong bước này bạn đã có bản demo chạy được đầy đủ giao di
    | Language | **Docker** |
    | Root Directory | `backend` |
    | Dockerfile Path | `backend/Dockerfile` |
-   | Instance Type | Starter trở lên (**không** dùng Free — xem mục 2.3) |
+   | Instance Type | 2 GB trở lên; muốn 300 DPI trên tấm dài 1 m thì cần **4 GB** — xem mục 2.3. **Không** dùng Free (mục 2.4) |
 
 4. Thêm biến môi trường:
 
@@ -117,11 +117,31 @@ curl -i https://printnest-api.onrender.com/api/v1/nesting/jobs/test
 
 Nhận được JSON này nghĩa là ứng dụng đã chạy và tầng xử lý lỗi hoạt động.
 
-### 2.3. Vì sao không dùng gói Free của Render
+### 2.3. Chọn RAM theo khổ tấm và DPI
+
+Dựng một bản TIF giữ **11 byte cho mỗi điểm ảnh** cùng lúc (ảnh đã vẽ, ảnh CMYK, mảng năm kênh, hai mặt nạ). Bộ nhớ tăng theo **bình phương** DPI:
+
+| Tấm | 150 DPI | 240 DPI | 300 DPI |
+|---|---|---|---|
+| 57 × 50 cm | 55 MB | 140 MB | 219 MB |
+| 57 × 100 cm | 110 MB | 280 MB | **875 MB** |
+
+`app.tiff.max-heap-fraction` (mặc định 0,5) chỉ cho một tấm dùng nửa heap, phần còn lại để ghi file và phục vụ các yêu cầu khác. Với `MaxRAMPercentage=60`:
+
+| Instance | Heap | Một tấm được dùng | Tấm 57 × 100 cm |
+|---|---|---|---|
+| 2 GB (`1c-2g`) | 1,2 GB | 600 MB | **Chỉ tới ~240 DPI** |
+| 4 GB | 2,4 GB | 1,2 GB | 300 DPI thoải mái |
+
+Vượt mức thì trả `TIFF_TOO_LARGE` **kèm đúng con số DPI nên đặt** — không phải đoán. Bản PDF và bản cắt không vướng giới hạn này.
+
+> **Vì sao phải chặn thay vì cứ chạy.** Hết bộ nhớ ở mức container **không** ném `OutOfMemoryError`: hệ điều hành giết thẳng tiến trình. Render ghi `Ran out of memory (used over 2GB)`, máy chủ khởi động lại, và mọi lần ghép giữ trong bộ nhớ **mất sạch** — thợ bấm tải TIF thì nhận `JOB_NOT_FOUND` cho chính lần ghép vừa chạy xong.
+
+### 2.4. Vì sao không dùng gói Free của Render
 
 Gói Free ngủ đông sau 15 phút không có request, và mất khoảng 50 giây để thức dậy. Thuật toán nesting lại ngốn CPU (5 giây cho một đơn 145 hình) và gói Free chỉ có 0,1 CPU — một đơn lớn có thể chạy hàng phút hoặc bị giết giữa chừng.
 
-### 2.4. Railway / Fly.io
+### 2.5. Railway / Fly.io
 
 Cách làm tương tự — cả hai đều đọc được `backend/Dockerfile`:
 
@@ -159,7 +179,8 @@ Cách làm tương tự — cả hai đều đọc được `backend/Dockerfile`
 | Đặt biến trong Netlify UI mà vẫn vô hiệu | Biến cùng tên được khai trong `[build.environment]` của `netlify.toml` — file này có quyền **CAO HƠN** UI | Xoá biến đó khỏi `netlify.toml` |
 | 404 khi vào thẳng `/nest/upload` | Thiếu `[[redirects]]` | Kiểm tra `netlify.toml` đã được commit chưa |
 | `FILE_NOT_FOUND` giữa chừng | Container đã khởi động lại, file tạm mất | Gắn disk vào `/app/storage` |
-| `JOB_NOT_FOUND` sau khi chờ lâu | Job lưu trong RAM, máy chủ đã khởi động lại | Làm lại từ bước 1; muốn bền thì thay `JobStore` bằng bản dùng DB |
+| `JOB_NOT_FOUND` sau khi chờ lâu | Job lưu trong RAM, máy chủ đã khởi động lại. Xem **Events** trên Render: `Ran out of memory` nghĩa là bị giết vì hết RAM khi dựng TIF | Nâng RAM hoặc hạ `APP_TIFF_DPI` (mục 2.3); muốn bền hẳn thì thay `JobStore` bằng bản dùng DB |
+| `502 Bad Gateway` khi tải TIF | Cùng một chuyện: tiến trình bị hệ điều hành giết giữa lúc dựng file | Như trên. Bản PDF và bản cắt nhẹ hơn nhiều nên thường vẫn tải được |
 | Ghép chạy rất lâu rồi lỗi | Gói máy chủ quá yếu | Nâng instance, hoặc đặt `maxSheetLengthMm` để chia nhỏ |
 
 ---

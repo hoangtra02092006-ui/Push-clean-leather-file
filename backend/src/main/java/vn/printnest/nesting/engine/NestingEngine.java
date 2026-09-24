@@ -738,7 +738,7 @@ public class NestingEngine {
                 round4(fillRate),
                 round4(savedVsIndividualPct(sheets, totalLengthMm, input)),
                 placedCount,
-                TypeStats.from(sheets, coverage, totalLengthMm));
+                TypeStats.from(sheets, totalLengthMm));
 
         return new NestResult(sheets, stats);
     }

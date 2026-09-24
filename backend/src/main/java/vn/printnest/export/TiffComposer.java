@@ -203,15 +203,43 @@ public class TiffComposer {
                     dpi, megapixels, limit));
         }
 
-        // Dinh bo nho tinh theo so byte moi diem anh, de con doi chieu khi doc log luc co
-        // su co:
-        //   RGB             4 byte  anh da ve
-        //   CMYK            4 + 4   anh da ve va anh CMYK cung ton tai luc chuyen doi
-        //   CMYK + trang    4 + 5 + 1   them anh nam kenh va mat na muc trang
-        long perPixel = properties.tiff().cmyk() ? (wantsWhiteChannel() ? 10 : 8) : 4;
-        long peakMb = estimatedBytes(sheet, dpi) / BYTES_PER_PIXEL * perPixel / (1024 * 1024);
-        log.debug("Tam {} o {} DPI: {} trieu diem, dinh bo nho khoang {} MB",
-                sheet.index() + 1, dpi, Math.round(megapixels), peakMb);
+        // Dinh bo nho tinh theo so byte moi diem anh. Dem tung mang con song cung luc,
+        // doc thang tu encodeWithWhite():
+        //
+        //   RGB           4        anh da ve
+        //   CMYK          4 + 4    anh da ve va anh CMYK cung ton tai luc chuyen doi
+        //   CMYK + trang  1 + 1 + 4 + 5 = 11
+        //                          vung phu 1, mat na da co 1, anh CMYK 4, mang nam kenh 5
+        //                          - bon cai nay cung song o buoc interleave()
+        //
+        // Day la mang CON SONG. Mang da flush nhung GC chua kip don con nam them mot
+        // nhip nua, va bo nho NGOAI heap cua ImageIO/ICC/PDFBox thi khong tinh o day -
+        // nen he so nay la can duoi, khong phai con so an toan.
+        long perPixel = properties.tiff().cmyk() ? (wantsWhiteChannel() ? 11 : 8) : 4;
+        long needBytes = widthPx * heightPx * perPixel;
+        long allowedBytes = properties.tiff().maxBytesPerSheet();
+
+        if (needBytes > allowedBytes) {
+            // Do phan giai lon nhat con vua: bo nho tang theo BINH PHUONG DPI nen rut can
+            // bac hai. Lam tron XUONG boi 10 - lam tron len thi con so goi y vuot chinh
+            // muc cho phep, tho lam theo van bi tu choi lan nua.
+            long fits = (long) Math.floor(dpi * Math.sqrt((double) allowedBytes / needBytes) / 10) * 10;
+            throw new ApiException(ErrorCode.TIFF_TOO_LARGE, String.format(
+                    "Tam %d (%.0f x %.0f cm) o %d DPI can khoang %d MB bo nho, ma may chu "
+                            + "nay chi danh duoc %d MB cho moi tam (heap %d MB). "
+                            + "Hay dat APP_TIFF_DPI xuong khoang %d, hoac dat chieu dai toi da "
+                            + "moi file ngan lai roi ghep lai, hoac nang RAM may chu len. "
+                            + "Ban PDF va ban cat khong vuong gioi han nay.",
+                    sheet.index() + 1, sheet.widthMm() / 10, sheet.lengthMm() / 10, dpi,
+                    needBytes / (1024 * 1024), allowedBytes / (1024 * 1024),
+                    Runtime.getRuntime().maxMemory() / (1024 * 1024),
+                    Math.max(fits, 10)));
+        }
+
+        log.debug("Tam {} o {} DPI: {} trieu diem, dinh bo nho khoang {} MB tren muc cho "
+                        + "phep {} MB",
+                sheet.index() + 1, dpi, Math.round(megapixels),
+                needBytes / (1024 * 1024), allowedBytes / (1024 * 1024));
     }
 
     /**

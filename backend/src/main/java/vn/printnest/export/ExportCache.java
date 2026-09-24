@@ -31,13 +31,17 @@ public class ExportCache {
     private static final Logger log = LoggerFactory.getLogger(ExportCache.class);
 
     /**
-     * Tran dung luong, tinh bang byte.
+     * Tran dung luong, tinh bang byte: 200 MB, nhung khong qua 1/4 heap.
      *
      * <p>200 MB chua duoc khoang 50 tam o muc 4 MB moi tam - du cho vai don lam cung luc.
-     * Con so nay nho so voi dinh bo nho luc DUNG mot tam (khoang 640 MB o che do CMYK),
-     * nen no khong phai la thu quyet dinh may chu can bao nhieu RAM.
+     *
+     * <p>Nhung 200 MB CO DINH la sai tren may nho: mot may chu 512 MB co heap khoang
+     * 384 MB, luc do rieng bo nho dem da an quá nua so RAM con lai de dung file. Het bo
+     * nho o muc container thi JVM bi he dieu hanh giet - nen tang tra 502 va moi lan ghep
+     * giu trong bo nho mat sach. Nen tran phai co lien he voi heap that.
      */
-    private static final long MAX_BYTES = 200L * 1024 * 1024;
+    private static final long MAX_BYTES = Math.min(
+            200L * 1024 * 1024, Runtime.getRuntime().maxMemory() / 4);
 
     /** Bang theo thu tu DUNG GAN NHAT, nen phan tu dau bang la thu lau khong ai dung. */
     private final Map<String, byte[]> entries = new LinkedHashMap<>(16, 0.75f, true);
