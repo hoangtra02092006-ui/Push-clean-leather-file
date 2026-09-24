@@ -150,7 +150,7 @@ public class FileService {
         StoredFile stored = new StoredFile(id, originalName, target.toString(), type,
                 meta.widthMm(), meta.heightMm(), meta.sourceWidthMm(), meta.sourceHeightMm(),
                 meta.contentBox(), meta.occupancy(), meta.pageRotation(), meta.pageCount(),
-                upload.getSize(), Instant.now());
+                meta.opaqueRaster(), upload.getSize(), Instant.now());
         files.put(id, stored);
 
         if (stored.trimmed()) {

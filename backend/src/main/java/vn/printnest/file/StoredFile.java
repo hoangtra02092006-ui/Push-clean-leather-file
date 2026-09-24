@@ -16,6 +16,9 @@ package vn.printnest.file;
  *                     (anh khong doc duoc vector nen luon coi la dac)
  * @param pageRotation goc xoay khai bao o trang PDF: 0, 90, 180 hoac 270
  * @param pageCount    so trang (anh luon la 1)
+ * @param opaqueRaster anh DET khong co kenh trong suot (anh JPG chang han). Chi rieng
+ *                     loai nay moi coi mang trang bao quanh la nen can bo; PDF va anh
+ *                     co kenh trong suot thi mau trang la net ve co chu y
  * @param sizeBytes    dung luong file
  * @param uploadedAt   thoi diem nhan file, dung de biet khi nao duoc phep don di
  */
@@ -32,6 +35,7 @@ public record StoredFile(
         OccupancyMask occupancy,
         int pageRotation,
         int pageCount,
+        boolean opaqueRaster,
         long sizeBytes,
         java.time.Instant uploadedAt
 ) {

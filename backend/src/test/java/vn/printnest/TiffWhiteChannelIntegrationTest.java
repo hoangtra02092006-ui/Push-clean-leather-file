@@ -539,6 +539,48 @@ class TiffWhiteChannelIntegrationTest {
                 .isGreaterThan(0);
     }
 
+    /**
+     * Anh PNG TACH NEN co chi tiet trang cung phai duoc lot muc trang.
+     *
+     * <p>Cai quyet dinh la CO KENH TRONG SUOT HAY KHONG, khong phai PDF hay anh. Mot file
+     * PNG da tach nen noi ro cho nao khong in bang chinh do trong suot roi; mau trang con
+     * lai trong do la net ve co chu y, y het file PDF. Chi anh det nhu JPG moi khong co
+     * cach nao khac de bao "day la nen".
+     */
+    @Test
+    @DisplayName("Anh PNG tach nen: chi tiet trang van phai duoc lot muc trang")
+    void whiteArtworkInATransparentPngStillGetsWhiteInk() throws Exception {
+        Tiff tiff = Tiff.parse(downloadTiff(buildWhiteOnTransparentPng(),
+                "chu-trang.png", MediaType.IMAGE_PNG_VALUE));
+        byte[] pixels = tiff.pixels();
+        int bands = tiff.shortValue(SAMPLES_PER_PIXEL);
+
+        int whiteInk = 0;
+        for (int p = 0; p + bands <= pixels.length; p += bands) {
+            if ((pixels[p + 4] & 0xFF) < 128) {
+                whiteInk++;
+            }
+        }
+
+        assertThat(whiteInk)
+                .as("chi tiet trang trong anh da tach nen phai co lop lot")
+                .isGreaterThan(0);
+    }
+
+    /** Anh PNG co kenh trong suot, ben trong la mot o vuong TRANG. */
+    private static byte[] buildWhiteOnTransparentPng() throws IOException {
+        java.awt.image.BufferedImage image =
+                new java.awt.image.BufferedImage(400, 240, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = image.createGraphics();
+        g.setColor(java.awt.Color.WHITE);
+        g.fillRect(80, 60, 240, 120);
+        g.dispose();
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "png", bytes);
+        return bytes.toByteArray();
+    }
+
     /** Mot hinh chu nhat TRANG tren nen trong suot - kieu chu trang cho ao toi mau. */
     private static byte[] buildWhiteOnTransparentPdf() throws IOException {
         try (PDDocument document = new PDDocument()) {

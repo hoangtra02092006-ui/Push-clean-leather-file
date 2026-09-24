@@ -354,11 +354,9 @@ Toàn bộ cấu trúc đối chiếu với **file mẫu thợ làm tay trong Ph
 
 Với ảnh **không có nền trong suốt** (ảnh JPG nền trắng đặc chẳng hạn), nền được loang từ **mép tấm** vào qua các điểm gần trắng — đúng như thao tác bấm magic wand vào nền. Nhờ vậy chữ trắng nằm giữa logo vẫn giữ được lớp lót, vì nó bị màu bao quanh nên loang không tới.
 
-> **Phép loang chỉ áp cho hình đến từ file ẢNH.** Ở mức điểm ảnh, nền trắng của ảnh JPG và **chữ trắng trong file PDF** giống hệt nhau — đều trắng, đều nằm cạnh chỗ trong suốt. Áp chung một phép đo thì chữ trắng bị bỏ theo: đo trên một thiết kế thật của xưởng, dòng "BÒ TƯƠI" và dòng hotline (đều là chữ trắng) ra file TIF **không có một điểm mực nào**, cả màu lẫn trắng — in lên áo tối là mất hai dòng chữ, mà mở trên nền trắng thì không ai thấy thiếu.
+> **Phép loang chỉ áp cho ảnh KHÔNG có kênh trong suốt** (ảnh JPG chẳng hạn). Ở mức điểm ảnh, nền trắng của ảnh JPG và **chữ trắng trong file PDF** giống hệt nhau — đều trắng, đều nằm cạnh chỗ trong suốt. Áp chung một phép đo thì chữ trắng bị bỏ theo: đo trên một thiết kế thật của xưởng, dòng "BÒ TƯƠI" và dòng hotline (đều là chữ trắng) ra file TIF **không có một điểm mực nào**, cả màu lẫn trắng — in lên áo tối là mất hai dòng chữ, mà mở trên nền trắng thì không ai thấy thiếu.
 >
-> Cái phân biệt được không nằm ở điểm ảnh mà nằm ở **nguồn**: trắng trong PDF là nét vẽ có chủ ý, trắng trong ảnh chụp thường là nền. Nên `PdfComposer.imageZones()` khoanh vùng các hình đến từ file ảnh, và chỉ trong những vùng đó mới coi trắng cạnh chỗ trong suốt là nền.
->
-> **Chỗ vẫn chịu:** ảnh PNG có kênh trong suốt mà lại vẽ chữ trắng thì vẫn bị bỏ, vì nó được xếp vào nhóm "ảnh". Gặp trường hợp đó thì xuất thiết kế ra PDF.
+> Cái phân biệt được không nằm ở điểm ảnh mà nằm ở **nguồn**: file **có kênh trong suốt** — PDF, hay ảnh PNG đã tách nền — đã nói rõ chỗ nào không in bằng chính độ trong suốt rồi, nên màu trắng còn lại trong đó là nét vẽ có chủ ý. Chỉ ảnh dẹt như JPG mới không có cách nào khác để báo "đây là nền". `PdfComposer.imageZones()` khoanh vùng đúng những hình đó, và chỉ trong những vùng ấy mới coi trắng cạnh chỗ trong suốt là nền.
 
 > **Chỗ vẫn chịu:** thiết kế có viền trắng **chạm mép** ảnh thì viền đó nối ra ngoài nên bị coi là nền. Không có cách nào phân biệt, kể cả làm tay.
 
