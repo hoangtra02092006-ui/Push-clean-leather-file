@@ -58,6 +58,38 @@ public class PdfComposer {
      * @param drawCutLines co ve duong cat quanh moi hinh khong
      * @return noi dung file PDF
      */
+    /**
+     * Vung cua nhung hinh den tu anh DET - anh khong co kenh trong suot.
+     *
+     * <p>Chi dung cho mat na muc trang: trong nhung vung nay, mau trang nam canh cho trong
+     * duoc coi la NEN va bo di, vi anh chup khong co kenh trong suot thi mang trang bao
+     * quanh hinh thuong la nen. Xem {@link WhiteChannel#finish(byte[], int, int, int[][])}.
+     *
+     * <p><b>Cai quyet dinh la CO KENH TRONG SUOT HAY KHONG, khong phai PDF hay anh.</b>
+     * File co kenh trong suot - PDF, hay anh PNG tach nen - da noi ro cho nao khong in
+     * bang chinh do trong suot roi; mau trang con lai trong do la net ve co chu y va phai
+     * duoc lot trang. Chi anh det nhu JPG moi khong co cach nao khac de bao "day la nen".
+     *
+     * <p>Dat ham o day vi day la cho duy nhat biet moi hinh den tu file nao.
+     *
+     * @param heightPx chieu cao anh da ve, de lat truc doc cho khop
+     */
+    public int[][] imageZones(Sheet sheet, int dpi, int heightPx) {
+        java.util.List<int[]> zones = new java.util.ArrayList<>();
+        for (Placement placement : sheet.placements()) {
+            if (!fileService.require(placement.fileId()).opaqueRaster()) {
+                continue;
+            }
+            int x0 = (int) Math.floor(placement.xMm() / 25.4 * dpi);
+            int x1 = (int) Math.ceil((placement.xMm() + placement.wMm()) / 25.4 * dpi);
+            // Toa do tam dem tu duoi len, anh dem tu tren xuong.
+            int y0 = heightPx - (int) Math.ceil((placement.yMm() + placement.hMm()) / 25.4 * dpi);
+            int y1 = heightPx - (int) Math.floor(placement.yMm() / 25.4 * dpi);
+            zones.add(new int[]{x0, y0, x1, y1});
+        }
+        return zones.toArray(new int[0][]);
+    }
+
     public byte[] compose(Sheet sheet, boolean drawCutLines) {
         try (PDDocument output = new PDDocument()) {
             PDPage page = new PDPage(new PDRectangle(

@@ -15,6 +15,17 @@ spring:
   mvc:
     problemdetails:
       enabled: false
+    async:
+      # Han thoi gian cho mot dap ung kieu LUONG, tinh bang mili giay.
+      #
+      # Endpoint tai ca bo .zip ghi thang ra dap ung va dung tung tam trong luc gui. Mot
+      # don 11 tam 57 x 99 cm mat vai phut - qua han mac dinh 30 giay thi Spring cat giua
+      # chung, va tho nhan ve mot file zip CUT: giai nen den tam thu ba thi bao
+      # "Unexpected end of ZLIB input stream". File van tai ve duoc nen rat de tuong la
+      # xong, do la cho nguy hiem.
+      #
+      # 30 phut la de chan mot yeu cau ket cung, khong phai de chan don lon.
+      request-timeout: ${APP_EXPORT_TIMEOUT_MS:1800000}
 
 app:
   storage:
@@ -39,6 +50,28 @@ app:
     # Tran cung, tinh bang trieu diem anh. Vuot qua thi bao loi ro rang chu khong de
     # may chu het bo nho. 100 du cho tam 57 x 100 cm o 300 DPI (79,5 trieu diem).
     max-megapixels: ${APP_TIFF_MAX_MEGAPIXELS:100}
+    # Phan heap duoc phep dung cho MOT tam.
+    #
+    # max-megapixels o tren la tran CO DINH nen no khong biet may chu that co bao nhieu
+    # RAM: 100 trieu diem o CMYK kem kenh trang la 1 GB - qua thua tren mot may 512 MB.
+    #
+    # Ma het bo nho o muc container thi JVM bi HE DIEU HANH giet, khong co ngoai le nao
+    # de bat: nen tang tra 502, may chu khoi dong lai, va MOI LAN GHEP dang giu trong bo
+    # nho mat sach - tho bam tai TIF thi nhan JOB_NOT_FOUND cho lan ghep vua chay xong.
+    #
+    # Nen do theo heap that. 0,5 de chua cho luc ghi file, nen Servlet va cac yeu cau khac
+    # chay song song.
+    max-heap-fraction: ${APP_TIFF_MAX_HEAP_FRACTION:0.5}
+    # So hang anh moi lan ve, o che do CMYK kem kenh muc trang.
+    #
+    # Ve CA tam 57 x 100 cm o 300 DPI ra bo nho la 318 MB rieng anh da ve, va do moi la
+    # mang dau tien trong bon mang phai cung ton tai. Ve theo dai thi bo nho khong con
+    # phu thuoc CHIEU DAI tam nua: 1.024 hang o kho 57 cm la 27 MB, bao nhieu met cuon
+    # cung van 27 MB.
+    #
+    # So nho thi nhe bo nho hon nhung PDFBox phai doc lai toan bo luong noi dung trang
+    # cho moi dai. Duoc lam tron len thanh boi so cua 64 (so hang moi dai TIFF).
+    band-rows: ${APP_TIFF_BAND_ROWS:1024}
     # Kieu nen. Ca hai deu khong mat du lieu.
     #
     # Deflate nhanh hon LZW khoang 40% va cho file nho hon khoang 28% - do doc tren mot

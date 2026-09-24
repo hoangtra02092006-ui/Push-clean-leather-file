@@ -199,14 +199,25 @@ class TiffExportIntegrationTest {
     void zipWithTiffFormat() throws Exception {
         String jobId = runJob();
 
-        byte[] zip = mockMvc.perform(
-                        get("/api/v1/nesting/jobs/{id}/export.zip", jobId).param("format", "tif"))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsByteArray();
+        byte[] zip = zipBytes(
+                get("/api/v1/nesting/jobs/{id}/export.zip", jobId).param("format", "tif"));
 
         List<String> names = entryNames(zip);
         assertThat(names).isNotEmpty();
         assertThat(names).allMatch(name -> name.endsWith(".tif"));
+
+        // Phai DU so tam. Endpoint ghi thang ra dap ung, nen mot goi cut giua chung van
+        // tai ve duoc va van doc duoc vai file dau - rat de tuong la xong. Da gap that:
+        // han thoi gian dap ung 30 giay cat mot don 11 tam con 3 tam.
+        assertThat(names).as("moi tam dung mot file, khong duoc thieu")
+                .hasSize(sheetCount(jobId));
+    }
+
+    /** So tam that cua lan ghep, doc tu ket qua job. */
+    private int sheetCount(String jobId) throws Exception {
+        String body = mockMvc.perform(get("/api/v1/nesting/jobs/{id}", jobId))
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body).get("result").get("sheets").size();
     }
 
     @Test
@@ -214,9 +225,7 @@ class TiffExportIntegrationTest {
     void zipDefaultsToPdf() throws Exception {
         String jobId = runJob();
 
-        byte[] zip = mockMvc.perform(get("/api/v1/nesting/jobs/{id}/export.zip", jobId))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsByteArray();
+        byte[] zip = zipBytes(get("/api/v1/nesting/jobs/{id}/export.zip", jobId));
 
         assertThat(entryNames(zip)).isNotEmpty().allMatch(name -> name.endsWith(".pdf"));
     }
@@ -316,6 +325,26 @@ class TiffExportIntegrationTest {
             reader.dispose();
             return tags;
         }
+    }
+
+    /**
+     * Tai goi .zip.
+     *
+     * <p>Endpoint nay ghi THANG ra dap ung thay vi dung ca file trong bo nho - mot don
+     * 11 tam 57 x 99 cm la 300 MB, nhan doi luc {@code toByteArray()} la may chu het bo
+     * nho. Doi lai, bai test phai qua mot nhip {@code asyncDispatch} moi lay duoc noi dung.
+     */
+    private byte[] zipBytes(org.springframework.test.web.servlet.RequestBuilder request)
+            throws Exception {
+        MvcResult started = mockMvc.perform(request)
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .request().asyncStarted())
+                .andReturn();
+        return mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .asyncDispatch(started))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
     }
 
     private static List<String> entryNames(byte[] zip) throws IOException {

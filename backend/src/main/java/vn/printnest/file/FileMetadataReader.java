@@ -101,7 +101,8 @@ public class FileMetadataReader {
             ContentBox contentBox,
             OccupancyMask occupancy,
             int pageRotation,
-            int pageCount
+            int pageCount,
+            boolean opaqueRaster
     ) {
     }
 
@@ -144,7 +145,9 @@ public class FileMetadataReader {
                     box,
                     occupancy,
                     rotation,
-                    document.getNumberOfPages());
+                    document.getNumberOfPages(),
+                    // PDF luon coi nhu co do trong suot: mau trang trong do la net ve.
+                    false);
         }
     }
 
@@ -234,11 +237,38 @@ public class FileMetadataReader {
 
                 double widthMm = Units.round2(widthPx / dpi[0] * MM_PER_INCH);
                 double heightMm = Units.round2(heightPx / dpi[1] * MM_PER_INCH);
-                return new Metadata(widthMm, heightMm, widthMm, heightMm, null, null, 0, 1);
+                return new Metadata(widthMm, heightMm, widthMm, heightMm, null, null, 0, 1,
+                        !hasAlpha(reader));
             } finally {
                 reader.dispose();
             }
         }
+    }
+
+    /**
+     * Anh nay co kenh trong suot khong.
+     *
+     * <p>Quyet dinh mau TRANG trong file duoc hieu la gi. Anh CO kenh trong suot thi cho
+     * nao khong in da duoc bao bang do trong suot roi, nen mau trang con lai la net ve co
+     * chu y - giong het file PDF. Anh KHONG co kenh trong suot (anh JPG chang han) thi
+     * mang trang bao quanh hinh thuong la nen can bo di.
+     *
+     * <p>Doc qua kieu anh ma bo doc khai bao, khong giai nen ca anh.
+     *
+     * @return {@code false} neu khong xac dinh duoc - khi do coi nhu co kenh trong suot,
+     *         tuc la GIU mau trang. Tha in thua mot mang trang (tho nhin ban nhap la
+     *         thay ngay) con hon in thieu chu trang (chi lo ra khi muc da len ao)
+     */
+    private boolean hasAlpha(ImageReader reader) {
+        try {
+            Iterator<javax.imageio.ImageTypeSpecifier> types = reader.getImageTypes(0);
+            if (types.hasNext()) {
+                return types.next().getColorModel().hasAlpha();
+            }
+        } catch (IOException | RuntimeException ex) {
+            log.warn("Khong doc duoc kieu anh, coi nhu co kenh trong suot: {}", ex.toString());
+        }
+        return true;
     }
 
     /**

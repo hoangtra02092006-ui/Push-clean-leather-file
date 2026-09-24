@@ -188,6 +188,7 @@ npm run build
 | `APP_RETENTION_SWEEP_MINUTES` | `60` | Bao lâu quét dọn một lần |
 | `APP_TIFF_DPI` | `300` | Độ phân giải bản TIF. Gấp đôi DPI là gấp **bốn** lần bộ nhớ |
 | `APP_TIFF_MAX_MEGAPIXELS` | `100` | Trần cứng tính bằng triệu điểm ảnh. Vượt thì báo lỗi rõ ràng thay vì để máy chủ hết bộ nhớ |
+| `APP_TIFF_MAX_HEAP_FRACTION` | `0.5` | Phần heap được phép dùng cho **một** tấm. Trần điểm ảnh ở trên là số cố định nên không biết máy chủ thật có bao nhiêu RAM — số này đo theo heap thật, nên máy nhỏ **báo lỗi** thay vì bị hệ điều hành giết |
 | `APP_TIFF_COMPRESSION` | `Deflate` | Kiểu nén. Đổi về `LZW` nếu RIP đời cũ không đọc được Deflate |
 | `APP_TIFF_COMPRESSION_QUALITY` | `0.3` | Mức nén 0..1. Số **nhỏ là nhanh**, file to hơn. Nén không mất dữ liệu nên đây chỉ là đánh đổi thời gian lấy dung lượng |
 | `APP_TIFF_COLOR_MODE` | `cmyk` | `rgb` hoặc `cmyk` |

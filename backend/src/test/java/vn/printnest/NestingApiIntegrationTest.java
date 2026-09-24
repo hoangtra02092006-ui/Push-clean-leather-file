@@ -122,8 +122,15 @@ class NestingApiIntegrationTest {
                     .isCloseTo(expectedLengthMm, org.assertj.core.data.Offset.offset(PDF_TOLERANCE_MM));
         }
 
-        // 5. Tai ca goi .zip.
-        MvcResult zipResult = mockMvc.perform(get("/api/v1/nesting/jobs/{id}/export.zip", jobId))
+        // 5. Tai ca goi .zip. Endpoint nay ghi thang ra dap ung nen phai qua mot nhip
+        // asyncDispatch - xem chu thich o ExportController.exportAll.
+        MvcResult zipStarted = mockMvc.perform(get("/api/v1/nesting/jobs/{id}/export.zip", jobId))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .request().asyncStarted())
+                .andReturn();
+        MvcResult zipResult = mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .asyncDispatch(zipStarted))
                 .andExpect(status().isOk())
                 .andReturn();
         assertThat(zipResult.getResponse().getContentAsByteArray()).isNotEmpty();

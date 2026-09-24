@@ -261,18 +261,14 @@ Một dòng cho mỗi loại hình đã tải lên, **sắp theo `categoryIndex`
 `lengthMm` là con số chủ xưởng dùng để chia tiền giấy, vì giấy tính tiền theo **mét dài** chứ không theo mét vuông:
 
 ```
-lengthMm = tổng chiều dài × (diện tích giấy mẫu này chiếm / tổng diện tích bị phủ)
+lengthMm = tổng chiều dài × (diện tích các bản của mẫu này / tổng diện tích mọi bản)
 ```
 
-Viết theo cách quen thuộc hơn thì tương đương:
+Phần giấy bỏ đi được **chia đều vào đầu mỗi mẫu theo diện tích** — công bằng, vì không mẫu nào một mình gây ra chỗ trống. Cộng các dòng lại đúng bằng `totalLengthMm`, không dư một sai số làm tròn nào.
 
-```
-lengthMm = (diện tích giấy mẫu này chiếm / diện tích giấy đã dùng) ÷ tỷ lệ lấp đầy × tổng chiều dài
-```
-
-Chia cho tỷ lệ lấp đầy chính là để **tính cả phần giấy bỏ đi vào đầu mỗi mẫu** — công bằng, vì không mẫu nào một mình gây ra chỗ trống. Bản rút gọn ở trên cho cùng kết quả mà cộng lại đúng tổng, không dư một sai số làm tròn nào.
-
-> **"Diện tích giấy mẫu này chiếm" đếm mỗi chỗ đúng MỘT lần.** Ở chế độ `FREE` và `TRUE_SHAPE`, khung bao của hai hình được phép lồng vào nhau; chỗ nào hai khung bao cùng trùm thì tính cho hình đứng trước trong danh sách. Hình nhỏ chui gọn vào góc trống của hình lớn **không tốn thêm mét giấy nào** nên chiều dài của nó gần bằng 0 — đúng như thực tế.
+> **Chia theo diện tích RIÊNG của từng bản, không theo phần giấy nó chiếm chỗ riêng.** Hai cách cho cùng kết quả ở chế độ `ORTHOGONAL` vì khung bao không chồng nhau. Nhưng ở `FREE` và `TRUE_SHAPE` khung bao **được phép** lồng nhau, và cách cũ trả về **0** cho mẫu nào chui gọn vào khung mẫu khác. Đo trên một đơn thật của xưởng: mẫu 8 × 0,9 cm, 11 bản, 83 cm² giấy, bảng ghi **0 cm** — tức khách đó được miễn phí giấy. Xưởng chia tiền theo cột này nên đó là sai tiền thật.
+>
+> Nói cách khác: cái lợi do xếp lồng tiết kiệm được giờ **chia đều cho mọi mẫu** theo diện tích, thay vì tặng trọn cho mẫu chui vào trong.
 
 > **Lưu ý về `fillRate` ở chế độ `FREE`.** Tỷ lệ lấp đầy được tính trên diện tích **khung bao**. Ở chế độ `FREE` các khung bao được phép lồng nhau, nên phần lồng bị đếm hai lần và `fillRate` cao hơn thực tế. Con số đáng tin để so sánh hai chế độ là **`totalLengthMm`** — đó cũng là thứ xưởng trả tiền.
 
@@ -357,6 +353,10 @@ Toàn bộ cấu trúc đối chiếu với **file mẫu thợ làm tay trong Ph
 **Lấy mặt nạ từ đâu.** Từ kênh alpha của ảnh đã dựng: chỗ nào có hình thì lót trắng, chỗ nào là phim trống thì không. **Không** lấy theo lối "điểm nào không trắng" — một logo có chữ trắng thật sẽ bị coi là nền và mất lớp lót, in lên áo màu tối là chữ biến mất.
 
 Với ảnh **không có nền trong suốt** (ảnh JPG nền trắng đặc chẳng hạn), nền được loang từ **mép tấm** vào qua các điểm gần trắng — đúng như thao tác bấm magic wand vào nền. Nhờ vậy chữ trắng nằm giữa logo vẫn giữ được lớp lót, vì nó bị màu bao quanh nên loang không tới.
+
+> **Phép loang chỉ áp cho ảnh KHÔNG có kênh trong suốt** (ảnh JPG chẳng hạn). Ở mức điểm ảnh, nền trắng của ảnh JPG và **chữ trắng trong file PDF** giống hệt nhau — đều trắng, đều nằm cạnh chỗ trong suốt. Áp chung một phép đo thì chữ trắng bị bỏ theo: đo trên một thiết kế thật của xưởng, dòng "BÒ TƯƠI" và dòng hotline (đều là chữ trắng) ra file TIF **không có một điểm mực nào**, cả màu lẫn trắng — in lên áo tối là mất hai dòng chữ, mà mở trên nền trắng thì không ai thấy thiếu.
+>
+> Cái phân biệt được không nằm ở điểm ảnh mà nằm ở **nguồn**: file **có kênh trong suốt** — PDF, hay ảnh PNG đã tách nền — đã nói rõ chỗ nào không in bằng chính độ trong suốt rồi, nên màu trắng còn lại trong đó là nét vẽ có chủ ý. Chỉ ảnh dẹt như JPG mới không có cách nào khác để báo "đây là nền". `PdfComposer.imageZones()` khoanh vùng đúng những hình đó, và chỉ trong những vùng ấy mới coi trắng cạnh chỗ trong suốt là nền.
 
 > **Chỗ vẫn chịu:** thiết kế có viền trắng **chạm mép** ảnh thì viền đó nối ra ngoài nên bị coi là nền. Không có cách nào phân biệt, kể cả làm tay.
 
