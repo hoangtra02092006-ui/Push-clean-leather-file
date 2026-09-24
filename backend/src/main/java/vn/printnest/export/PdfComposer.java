@@ -58,6 +58,34 @@ public class PdfComposer {
      * @param drawCutLines co ve duong cat quanh moi hinh khong
      * @return noi dung file PDF
      */
+    /**
+     * Vung cua nhung hinh den tu file ANH, tinh bang diem anh.
+     *
+     * <p>Chi dung cho mat na muc trang: trong nhung vung nay, mau trang nam canh cho trong
+     * duoc coi la NEN (anh chup thuong co nen trang phai bo di). Ngoai nhung vung do -
+     * tuc la cac hinh tu file PDF - mau trang la net ve co chu y va phai duoc lot trang.
+     * Xem {@link WhiteChannel#finish(byte[], int, int, int[][])}.
+     *
+     * <p>Dat ham o day vi day la cho duy nhat biet moi hinh den tu file nao.
+     *
+     * @param heightPx chieu cao anh da ve, de lat truc doc cho khop
+     */
+    public int[][] imageZones(Sheet sheet, int dpi, int heightPx) {
+        java.util.List<int[]> zones = new java.util.ArrayList<>();
+        for (Placement placement : sheet.placements()) {
+            if (fileService.require(placement.fileId()).type() == FileType.PDF) {
+                continue;
+            }
+            int x0 = (int) Math.floor(placement.xMm() / 25.4 * dpi);
+            int x1 = (int) Math.ceil((placement.xMm() + placement.wMm()) / 25.4 * dpi);
+            // Toa do tam dem tu duoi len, anh dem tu tren xuong.
+            int y0 = heightPx - (int) Math.ceil((placement.yMm() + placement.hMm()) / 25.4 * dpi);
+            int y1 = heightPx - (int) Math.floor(placement.yMm() / 25.4 * dpi);
+            zones.add(new int[]{x0, y0, x1, y1});
+        }
+        return zones.toArray(new int[0][]);
+    }
+
     public byte[] compose(Sheet sheet, boolean drawCutLines) {
         try (PDDocument output = new PDDocument()) {
             PDPage page = new PDPage(new PDRectangle(

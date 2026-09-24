@@ -503,6 +503,58 @@ class TiffWhiteChannelIntegrationTest {
         return Math.max(0, 255 - ink - black);
     }
 
+    /**
+     * Chu TRANG trong file PDF phai duoc lot muc trang.
+     *
+     * <p>Do that tren mot thiet ke cua xuong: logo co dong "BO TUOI" va dong hotline deu
+     * la chu trang tren nen trong suot. Trong file TIF xuat ra, ca hai dong KHONG CO GI -
+     * khong mot diem muc mau, khong mot diem lot trang. Mo bang Photoshop thi chi con
+     * dong chu mau vang o giua. In len ao toi mau la mat hai dong chu.
+     *
+     * <p>Nguyen nhan: phep loang nen coi moi diem gan trang nam canh cho TRONG SUOT la
+     * nen. No sinh ra de bo nen trang cua anh chup, nhung chu trang tren nen trong suot
+     * o muc diem anh thi giong het - nen bi bo theo.
+     *
+     * <p>Cai phan biet duoc khong nam o diem anh ma nam o NGUON: trang trong PDF la net
+     * ve co chu y. Bai nay chot lai dieu do, va bai {@code jpegWithoutAlphaStillGets...}
+     * ngay tren chot chieu nguoc lai - nen trang cua anh JPG van phai bi loai.
+     */
+    @Test
+    @DisplayName("Chu trang trong file PDF van phai duoc lot muc trang")
+    void whiteArtworkInAPdfStillGetsWhiteInk() throws Exception {
+        Tiff tiff = Tiff.parse(downloadTiff(buildWhiteOnTransparentPdf(),
+                "chu-trang.pdf", MediaType.APPLICATION_PDF_VALUE));
+        byte[] pixels = tiff.pixels();
+        int bands = tiff.shortValue(SAMPLES_PER_PIXEL);
+
+        int whiteInk = 0;
+        for (int p = 0; p + bands <= pixels.length; p += bands) {
+            if ((pixels[p + 4] & 0xFF) < 128) {
+                whiteInk++;
+            }
+        }
+
+        assertThat(whiteInk)
+                .as("chu trang phai co lop lot, khong thi in len ao toi la mat chu")
+                .isGreaterThan(0);
+    }
+
+    /** Mot hinh chu nhat TRANG tren nen trong suot - kieu chu trang cho ao toi mau. */
+    private static byte[] buildWhiteOnTransparentPdf() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(new PDRectangle(200, 120));
+            document.addPage(page);
+            try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                content.setNonStrokingColor(1f, 1f, 1f);
+                content.addRect(40, 30, 120, 60);
+                content.fill();
+            }
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            document.save(bytes);
+            return bytes.toByteArray();
+        }
+    }
+
     // ------------------------------------------------------------------
 
     private byte[] downloadTiff() throws Exception {

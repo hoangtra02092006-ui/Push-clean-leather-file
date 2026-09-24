@@ -126,7 +126,8 @@ public class CutComposer {
                 band.flush();
             }
             // Phep loang nhin ca tam nen phai doi moi dai phan loai xong - xem WhiteChannel.
-            WhiteChannel.finish(cutMask, width, height);
+            WhiteChannel.finish(cutMask, width, height,
+                    pdfComposer.imageZones(sheet, settings.dpi(), height));
 
             int radius = (int) Math.round(settings.offsetMm() * settings.dpi() / 25.4);
             if (radius > 0) {

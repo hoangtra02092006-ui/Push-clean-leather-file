@@ -144,7 +144,7 @@ public class TiffComposer {
 
             if (white) {
                 // Duong DAI: khong bao gio ve ca tam ra bo nho - xem encodeWithWhiteBanded.
-                Banded banded = encodeWithWhiteBanded(document, dpi, cmykProfile());
+                Banded banded = encodeWithWhiteBanded(document, sheet, dpi, cmykProfile());
                 tiff = banded.tiff();
                 width = banded.width();
                 height = banded.height();
@@ -311,8 +311,8 @@ public class TiffComposer {
      * <p>Ve hai luot nghe phi nhung ve chi chiem mot phan nho thoi gian; phan ton nhat la
      * NEN file. Doi lai bo nho khong con phu thuoc chieu dai tam.
      */
-    private Banded encodeWithWhiteBanded(PDDocument document, int dpi, ICC_Profile profile)
-            throws IOException {
+    private Banded encodeWithWhiteBanded(PDDocument document, Sheet sheet, int dpi,
+                                         ICC_Profile profile) throws IOException {
         AppProperties.Tiff.White settings = properties.tiff().white();
         SheetBands bands = SheetBands.of(document, dpi);
         int width = bands.width();
@@ -355,7 +355,8 @@ public class TiffComposer {
         // Loang nen tu mep tam. PHAI lam sau khi MOI dai da phan loai xong: duong loang
         // di xuyen qua ranh gioi cac dai, lam som mot dai nao do la cat cut no.
         long maskStart = System.currentTimeMillis();
-        WhiteChannel.finish(coverage, width, height);
+        WhiteChannel.finish(coverage, width, height,
+                pdfComposer.imageZones(sheet, dpi, height));
 
         // Vung phu dung hai viec, va hai viec do can hai ban KHAC nhau: kenh do trong suot
         // lay ban chua co (lop mau trai het ra mep), kenh muc trang lay ban da co vao.

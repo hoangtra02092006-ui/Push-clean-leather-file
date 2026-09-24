@@ -90,7 +90,34 @@ public final class WhiteChannel {
      * cac dai, nen lam som mot dai nao do la cat cut duong loang.
      */
     public static void finish(byte[] mask, int width, int height) {
-        floodBackground(mask, width, height);
+        finish(mask, width, height, null);
+    }
+
+    /**
+     * Nhu tren, nhung chi coi "gan trang nam canh cho trong" la NEN o trong nhung vung
+     * duoc chi ra.
+     *
+     * <p><b>Vi sao can gioi han.</b> Phep loang sinh ra de bo nen trang cua anh chup: anh
+     * JPG khong co kenh trong suot nen nen cua no la mot mang trang dac, phai bo di keo
+     * may phun trang day ra ca vung do.
+     *
+     * <p>Nhung CHU TRANG trong file vector cung la mau trang nam canh cho trong suot -
+     * o muc diem anh, hai thu giong het nhau. Ap chung mot phep do thi chu trang bi bo
+     * theo. Do that tren mot thiet ke cua xuong: dong "BO TUOI" va dong hotline deu la
+     * chu trang, va trong file TIF xuat ra chung KHONG CO GI - khong mot diem muc mau,
+     * khong mot diem lot trang. In len ao toi mau la mat hai dong chu.
+     *
+     * <p>Cai phan biet duoc hai truong hop khong nam o diem anh ma nam o NGUON: trang
+     * trong file PDF la net ve co chu y, con trang trong anh chup thuong la nen. Nen o
+     * day nhan vao vung cua nhung hinh den tu ANH, va chi trong nhung vung do moi coi
+     * trang canh cho trong la nen. Vien tam thi luc nao cung la diem xuat phat.
+     *
+     * @param imageZones vung cua cac hinh den tu file ANH, moi vung la
+     *                   {@code {x0, y0, x1, y1}} theo diem anh, bien phai/duoi khong
+     *                   tinh. {@code null} hoac rong = khong vung nao
+     */
+    public static void finish(byte[] mask, int width, int height, int[][] imageZones) {
+        floodBackground(mask, width, height, imageZones);
 
         // Cho nao gan trang ma khong noi ra mep thi la chi tiet trang that: lot binh thuong.
         for (int i = 0; i < mask.length; i++) {
@@ -155,7 +182,20 @@ public final class WhiteChannel {
      * <p><b>Cho van chiu:</b> thiet ke co vien trang CHAM MEP anh thi vien do noi ra
      * ngoai, se bi coi la nen. Khong co cach nao phan biet, ke ca lam tay.
      */
-    private static void floodBackground(byte[] mask, int width, int height) {
+    /** Diem nay co nam trong vung cua mot hinh den tu file ANH khong. */
+    private static boolean inImageZone(int[][] zones, int x, int y) {
+        if (zones == null) {
+            return false;
+        }
+        for (int[] zone : zones) {
+            if (x >= zone[0] && x < zone[2] && y >= zone[1] && y < zone[3]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void floodBackground(byte[] mask, int width, int height, int[][] imageZones) {
         int[] stack = new int[1024];
         int top = 0;
 
@@ -174,10 +214,11 @@ public final class WhiteChannel {
             int x = i % width;
             int y = i / width;
             boolean onBorder = x == 0 || y == 0 || x == width - 1 || y == height - 1;
-            boolean touchesGap = (x > 0 && mask[i - 1] == NONE)
+            boolean touchesGap = inImageZone(imageZones, x, y)
+                    && ((x > 0 && mask[i - 1] == NONE)
                     || (x < width - 1 && mask[i + 1] == NONE)
                     || (y > 0 && mask[i - width] == NONE)
-                    || (y < height - 1 && mask[i + width] == NONE);
+                    || (y < height - 1 && mask[i + width] == NONE));
 
             if (onBorder || touchesGap) {
                 mask[i] = NONE;
