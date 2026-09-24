@@ -23,7 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class BandedSamplesTest {
 
-    private static final int BANDS = 5;
+    private static final int COLOUR_BANDS = 4;
+    private static final int BANDS = COLOUR_BANDS + 1;
 
     /** Gia tri dat truoc cho moi diem, de doi chieu duoc tung byte. */
     private static byte value(int x, int y, int band) {
@@ -31,25 +32,35 @@ class BandedSamplesTest {
     }
 
     private static BandedSamples build(int width, int height, int bandRows) {
+        // Phan da nen chi chua BON kenh mau; kenh muc trang duoc ghep vao luc doc.
         List<byte[]> packed = new ArrayList<>();
         for (int first = 0; first < height; first += bandRows) {
             int rows = Math.min(bandRows, height - first);
-            byte[] raw = new byte[rows * width * BANDS];
+            byte[] raw = new byte[rows * width * COLOUR_BANDS];
             for (int y = 0; y < rows; y++) {
                 for (int x = 0; x < width; x++) {
-                    for (int b = 0; b < BANDS; b++) {
-                        raw[(y * width + x) * BANDS + b] = value(x, first + y, b);
+                    for (int b = 0; b < COLOUR_BANDS; b++) {
+                        raw[(y * width + x) * COLOUR_BANDS + b] = value(x, first + y, b);
                     }
                 }
             }
             packed.add(deflate(raw));
         }
 
+        // Mat na ghi NGUOC vao file: kenh thu nam = 255 - mat na. Dat nguoc lai o day de
+        // ket qua doc ra dung bang value(x, y, 4).
+        byte[] mask = new byte[width * height];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                mask[y * width + x] = (byte) (255 - (value(x, y, COLOUR_BANDS) & 0xFF));
+            }
+        }
+
         ComponentColorModel model = new ComponentColorModel(
                 java.awt.color.ColorSpace.getInstance(java.awt.color.ColorSpace.CS_sRGB),
                 new int[]{8, 8, 8, 8, 8}, true, false,
                 java.awt.Transparency.TRANSLUCENT, DataBuffer.TYPE_BYTE);
-        return new BandedSamples(width, height, bandRows, 4, BANDS, packed, model);
+        return new BandedSamples(width, height, bandRows, 4, COLOUR_BANDS, packed, mask, model);
     }
 
     private static byte[] deflate(byte[] source) {

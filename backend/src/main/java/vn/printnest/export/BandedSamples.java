@@ -37,6 +37,7 @@ final class BandedSamples implements RenderedImage {
     private final int height;
     private final int bandRows;
     private final int stripRows;
+    private final int colourBands;
     private final int bands;
     private final List<byte[]> compressed;
     private final ColorModel colorModel;
@@ -44,19 +45,26 @@ final class BandedSamples implements RenderedImage {
     private byte[] current;
     private int currentBand = -1;
 
+    /** Mat na muc trang, 1 byte moi diem cua CA tam. Ghep vao lam kenh thu nam luc doc. */
+    private final byte[] mask;
+
     /**
-     * @param compressed du lieu tung dai da nen bang Deflate, theo thu tu tu tren xuong
+     * @param compressed du lieu MAU tung dai da nen bang Deflate, theo thu tu tu tren xuong
      * @param bandRows   so hang moi dai DA NEN; dai cuoi co the ngan hon
      * @param stripRows  so hang moi dai TIFF, tuc o luoi ma anh nay khai ra ngoai
+     * @param colourBands so kenh MAU trong phan da nen (4 cho CMYK)
+     * @param mask       mat na muc trang; kenh thu nam duoc ghep vao luc doc
      */
-    BandedSamples(int width, int height, int bandRows, int stripRows, int bands,
-                  List<byte[]> compressed, ColorModel colorModel) {
+    BandedSamples(int width, int height, int bandRows, int stripRows, int colourBands,
+                  List<byte[]> compressed, byte[] mask, ColorModel colorModel) {
         this.width = width;
         this.height = height;
         this.bandRows = bandRows;
         this.stripRows = stripRows;
-        this.bands = bands;
+        this.colourBands = colourBands;
+        this.bands = colourBands + 1;
         this.compressed = compressed;
+        this.mask = mask;
         this.colorModel = colorModel;
     }
 
@@ -82,8 +90,17 @@ final class BandedSamples implements RenderedImage {
             int row = rect.y + y;
             int band = row / bandRows;
             byte[] source = inflate(band);
-            int from = (row - band * bandRows) * width * bands + rect.x * bands;
-            System.arraycopy(source, from, data, y * rowBytes, rowBytes);
+            int from = (row - band * bandRows) * width * colourBands + rect.x * colourBands;
+            int maskFrom = row * width + rect.x;
+            int to = y * rowBytes;
+
+            // Ghep bon kenh mau voi kenh muc trang. Mat na ghi NGUOC: 0 moi la co muc -
+            // xem WhiteChannel.writeSpotBand.
+            for (int x = 0; x < rect.width; x++) {
+                System.arraycopy(source, from + x * colourBands, data, to + x * bands,
+                        colourBands);
+                data[to + x * bands + colourBands] = (byte) (255 - (mask[maskFrom + x] & 0xFF));
+            }
         }
 
         int[] offsets = new int[bands];
@@ -100,28 +117,32 @@ final class BandedSamples implements RenderedImage {
         if (band == currentBand) {
             return current;
         }
-        byte[] target = new byte[rowsIn(band) * width * bands];
+        current = inflate(compressed.get(band), rowsIn(band) * width * colourBands);
+        currentBand = band;
+        return current;
+    }
+
+    /** Giai nen mot dai ra dung so byte mong doi. */
+    static byte[] inflate(byte[] source, int size) {
+        byte[] target = new byte[size];
         Inflater inflater = new Inflater();
         try {
-            inflater.setInput(compressed.get(band));
+            inflater.setInput(source);
             int at = 0;
             while (at < target.length) {
                 int written = inflater.inflate(target, at, target.length - at);
                 if (written == 0) {
                     throw new IllegalStateException(
-                            "Dai " + band + " giai nen thieu: moi duoc " + at + "/" + target.length);
+                            "Giai nen thieu: moi duoc " + at + "/" + target.length);
                 }
                 at += written;
             }
         } catch (DataFormatException ex) {
             throw new UncheckedIOException(new java.io.IOException(
-                    "Hong du lieu dai " + band + ": " + ex.getMessage(), ex));
+                    "Hong du lieu dai: " + ex.getMessage(), ex));
         } finally {
             inflater.end();
         }
-
-        current = target;
-        currentBand = band;
         return target;
     }
 

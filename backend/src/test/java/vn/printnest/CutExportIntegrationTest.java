@@ -367,8 +367,16 @@ class CutExportIntegrationTest {
     void downloadsEveryCutFileAsZip() throws Exception {
         String jobId = runJob(buildPdf(100, 60), CLEAR_MARGIN_MM, 6);
 
-        byte[] zip = mockMvc.perform(
+        // Endpoint zip ghi THANG ra dap ung nen phai qua mot nhip asyncDispatch moi lay
+        // duoc noi dung - xem chu thich o ExportController.exportAll.
+        MvcResult started = mockMvc.perform(
                         get("/api/v1/nesting/jobs/{id}/export.zip", jobId).param("format", "cut"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .request().asyncStarted())
+                .andReturn();
+        byte[] zip = mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .asyncDispatch(started))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray();
 

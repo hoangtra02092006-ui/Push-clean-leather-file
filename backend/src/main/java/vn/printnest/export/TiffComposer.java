@@ -319,64 +319,74 @@ public class TiffComposer {
         int height = bands.height();
         int bandRows = bandRows(height);
 
+        // MOT luot ve duy nhat. Moi dai di mot mach: phan loai diem anh -> lam phang len
+        // nen trang -> chuyen CMYK -> nen lai giu day.
+        //
+        // Ban truoc ve HAI luot, mot de dung mat na va mot de lay mau. Do tren don that
+        // cua xuong: luot dung mat na ngon 8-12 giay moi tam, khoang 35% tong thoi gian.
+        // Gop lai duoc vi mau khong phu thuoc mat na - chi kenh muc trang moi phu thuoc,
+        // ma kenh do duoc ghep vao luc GHI file, khong phai luc nay.
         long start = System.currentTimeMillis();
         byte[] coverage = new byte[width * height];
+        List<byte[]> packed = new ArrayList<>((height + bandRows - 1) / bandRows);
+
         for (int row = 0; row < height; row += bandRows) {
             int rows = Math.min(bandRows, height - row);
-            WhiteChannel.classify(bands.render(row, rows), coverage, width, row,
+            BufferedImage band = bands.render(row, rows);
+
+            WhiteChannel.classify(band, coverage, width, row,
                     settings.alphaThreshold(), settings.whiteTolerance());
+            // Phai lam phang SAU khi phan loai (buoc tren can kenh alpha) va TRUOC khi
+            // chuyen mau.
+            flattenOntoWhite(band);
+
+            BufferedImage cmyk = toCmykQuiet(band, profile);
+            band.flush();
+            byte[] colour = ((DataBufferByte) cmyk.getRaster().getDataBuffer()).getData();
+            packed.add(deflate(colour, rows * width * CMYK_BANDS));
+            cmyk.flush();
         }
+
+        int packedBytes = packed.stream().mapToInt(part -> part.length).sum();
+        log.info("Da ve va chuyen mau {} dai {} hang trong {} ms, giu lai {} MB da nen",
+                packed.size(), bandRows, System.currentTimeMillis() - start,
+                packedBytes / (1024 * 1024));
 
         // Loang nen tu mep tam. PHAI lam sau khi MOI dai da phan loai xong: duong loang
         // di xuyen qua ranh gioi cac dai, lam som mot dai nao do la cat cut no.
+        long maskStart = System.currentTimeMillis();
         WhiteChannel.finish(coverage, width, height);
 
         // Vung phu dung hai viec, va hai viec do can hai ban KHAC nhau: kenh do trong suot
         // lay ban chua co (lop mau trai het ra mep), kenh muc trang lay ban da co vao.
         byte[] mask = WhiteChannel.choke(coverage, width, height, settings.chokePixels());
         log.info("Da dung mat na kenh {} trong {} ms (co vao {} diem)",
-                settings.channelName(), System.currentTimeMillis() - start, settings.chokePixels());
+                settings.channelName(), System.currentTimeMillis() - maskStart,
+                settings.chokePixels());
 
-        PhotoshopLayers.Builder layerBuilder = properties.tiff().transparentLayer()
-                ? new PhotoshopLayers.Builder(width, height, properties.tiff().layerZip())
-                : null;
-        List<byte[]> packed = new ArrayList<>((height + bandRows - 1) / bandRows);
-        byte[] samples = new byte[bandRows * width * CMYK_WHITE_BANDS];
-
-        long bandStart = System.currentTimeMillis();
-        for (int row = 0; row < height; row += bandRows) {
-            int rows = Math.min(bandRows, height - row);
-            BufferedImage band = bands.render(row, rows);
-
-            // Phai lam phang SAU khi dung mat na (buoc tren can kenh alpha) va TRUOC khi
-            // chuyen mau.
-            flattenOntoWhite(band);
-            BufferedImage cmyk = toCmykQuiet(band, profile);
-            interleaveBand(cmyk, mask, row * width, rows * width, samples);
-            cmyk.flush();
-
-            if (layerBuilder != null) {
+        byte[] layers = null;
+        if (properties.tiff().transparentLayer()) {
+            long layerStart = System.currentTimeMillis();
+            PhotoshopLayers.Builder builder =
+                    new PhotoshopLayers.Builder(width, height, properties.tiff().layerZip());
+            // Doc lai tu phan da nen chu khong ve lai: giai nen nhanh hon ve nhieu.
+            for (int band = 0; band < packed.size(); band++) {
+                int first = band * bandRows;
+                int rows = Math.min(bandRows, height - first);
+                byte[] colour = BandedSamples.inflate(packed.get(band),
+                        rows * width * CMYK_BANDS);
                 for (int y = 0; y < rows; y++) {
-                    layerBuilder.addRow(samples, y * width * CMYK_WHITE_BANDS,
-                            CMYK_WHITE_BANDS, coverage, (row + y) * width);
+                    builder.addRow(colour, y * width * CMYK_BANDS, CMYK_BANDS,
+                            coverage, (first + y) * width);
                 }
             }
-            packed.add(deflate(samples, rows * width * CMYK_WHITE_BANDS));
-        }
-
-        int packedBytes = packed.stream().mapToInt(part -> part.length).sum();
-        log.info("Da dung {} dai {} hang trong {} ms, giu lai {} MB da nen",
-                packed.size(), bandRows, System.currentTimeMillis() - bandStart,
-                packedBytes / (1024 * 1024));
-
-        byte[] layers = layerBuilder == null ? null : layerBuilder.finish(LAYER_NAME);
-        if (layers != null) {
-            log.info("Da dung lop trong suot: {} MB", layers.length / (1024 * 1024));
+            layers = builder.finish(LAYER_NAME);
+            log.info("Da dung lop trong suot: {} MB, mat {} ms",
+                    layers.length / (1024 * 1024), System.currentTimeMillis() - layerStart);
         }
 
         BandedSamples image = new BandedSamples(width, height, bandRows, ROWS_PER_STRIP,
-                CMYK_WHITE_BANDS,
-                packed, spotColorModel(profile));
+                CMYK_BANDS, packed, mask, spotColorModel(profile));
         byte[] tiff = encode(image, dpi, profile,
                 PhotoshopResources.spotChannel(settings.channelName()), layers);
         forceExtraSamplesUnspecified(tiff);

@@ -1,5 +1,7 @@
 package vn.printnest.export;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -8,13 +10,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import vn.printnest.common.ApiException;
 import vn.printnest.common.ErrorCode;
 import vn.printnest.job.Job;
 import vn.printnest.nesting.NestingService;
 import vn.printnest.nesting.model.Sheet;
 
-import java.io.ByteArrayOutputStream;
+
 import java.io.IOException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -29,6 +32,8 @@ import java.util.zip.ZipOutputStream;
 @RestController
 @RequestMapping("/api/v1/nesting/jobs/{jobId}")
 public class ExportController {
+
+    private static final Logger log = LoggerFactory.getLogger(ExportController.class);
 
     /**
      * Tien to ten file tai ve.
@@ -118,10 +123,20 @@ public class ExportController {
     /**
      * Tai tat ca cac tam trong mot file .zip.
      *
+     * <p><b>Ghi THANG ra dap ung, khong dung cai zip trong bo nho.</b> Ban cu gom ca zip
+     * vao mot {@code ByteArrayOutputStream} roi goi {@code toByteArray()} - tuc la giu HAI
+     * ban cua toan bo file. Do that tren mot don 11 tam 57 x 99 cm: moi tam 17-42 MB, cong
+     * lai khoang 300 MB, nhan doi thanh 600 MB, va may chu het bo nho giua chung sau khi
+     * tho da doi gan nam phut. Ghi thang thi luc nao cung chi co MOT tam trong bo nho.
+     *
+     * <p>Doi lai: da gui byte dau tien di thi khong the doi ma trang thai nua. Tam nao
+     * dung hong giua chung thi zip dut o do - trinh duyet bao file hong, va log ghi ro tam
+     * nao. Danh doi nay chap nhan duoc vi ban cu KHONG chay noi ngay tu dau.
+     *
      * @param format {@code pdf} (mac dinh), {@code tif} hoac {@code cut}
      */
     @GetMapping("/export.zip")
-    public ResponseEntity<byte[]> exportAll(
+    public ResponseEntity<StreamingResponseBody> exportAll(
             @PathVariable String jobId,
             @RequestParam(defaultValue = "pdf") String format) {
 
@@ -129,22 +144,27 @@ public class ExportController {
         Job job = nestingService.requireDone(jobId);
         boolean cutLines = job.request().drawCutLinesOrDefault();
 
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        try (ZipOutputStream zip = new ZipOutputStream(buffer)) {
-            for (Sheet sheet : job.result().sheets()) {
-                zip.putNextEntry(new ZipEntry(fileName(job, sheet, ext)));
-                zip.write(build(job, sheet, ext, cutLines));
-                zip.closeEntry();
+        StreamingResponseBody body = output -> {
+            long start = System.currentTimeMillis();
+            try (ZipOutputStream zip = new ZipOutputStream(output)) {
+                for (Sheet sheet : job.result().sheets()) {
+                    zip.putNextEntry(new ZipEntry(fileName(job, sheet, ext)));
+                    zip.write(build(job, sheet, ext, cutLines));
+                    zip.closeEntry();
+                    // Day tam vua xong di ngay. Khong flush thi ca bo van don lai trong
+                    // vung dem cua Tomcat, dung cai loi vua sua.
+                    zip.flush();
+                }
             }
-        } catch (IOException ex) {
-            throw new ApiException(ErrorCode.INTERNAL_ERROR, "Khong nen duoc file zip: " + ex.getMessage());
-        }
+            log.info("Da gui zip {} gom {} tam trong {} ms",
+                    ext, job.result().sheets().size(), System.currentTimeMillis() - start);
+        };
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + BRAND + "-" + shortId(jobId) + "-" + ext + ".zip\"")
-                .body(buffer.toByteArray());
+                .body(body);
     }
 
     /** Chi nhan dung ba dinh dang; go nham thi bao ngay chu khong lang le tra ve PDF. */
