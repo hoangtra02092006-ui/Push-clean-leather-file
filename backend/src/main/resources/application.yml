@@ -51,6 +51,16 @@ app:
     # Nen do theo heap that. 0,5 de chua cho luc ghi file, nen Servlet va cac yeu cau khac
     # chay song song.
     max-heap-fraction: ${APP_TIFF_MAX_HEAP_FRACTION:0.5}
+    # So hang anh moi lan ve, o che do CMYK kem kenh muc trang.
+    #
+    # Ve CA tam 57 x 100 cm o 300 DPI ra bo nho la 318 MB rieng anh da ve, va do moi la
+    # mang dau tien trong bon mang phai cung ton tai. Ve theo dai thi bo nho khong con
+    # phu thuoc CHIEU DAI tam nua: 1.024 hang o kho 57 cm la 27 MB, bao nhieu met cuon
+    # cung van 27 MB.
+    #
+    # So nho thi nhe bo nho hon nhung PDFBox phai doc lai toan bo luong noi dung trang
+    # cho moi dai. Duoc lam tron len thanh boi so cua 64 (so hang moi dai TIFF).
+    band-rows: ${APP_TIFF_BAND_ROWS:1024}
     # Kieu nen. Ca hai deu khong mat du lieu.
     #
     # Deflate nhanh hon LZW khoang 40% va cho file nho hon khoang 28% - do doc tren mot

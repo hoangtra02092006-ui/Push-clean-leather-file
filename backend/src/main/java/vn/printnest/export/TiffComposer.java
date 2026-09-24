@@ -32,15 +32,18 @@ import java.awt.image.ColorConvertOp;
 import java.awt.image.ComponentColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DataBufferByte;
-import java.awt.image.PixelInterleavedSampleModel;
-import java.awt.image.Raster;
+
+
 import java.awt.image.WritableRaster;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.Deflater;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -56,9 +59,10 @@ import java.io.IOException;
  * dinh dang doi theo, khong the lech nhau.
  *
  * <p><b>Bo nho la rang buoc that o day.</b> Mot tam 57 x 100 cm o 300 DPI la 6.732 x
- * 11.811 diem = 318 MB trong bo nho, va do la anh CHUA nen. Vi vay co mot tran cung:
- * vuot qua thi bao loi ro rang chu khong de may chu het bo nho roi tu khoi dong lai, mat
- * sach viec cua nguoi khac dang lam do.
+ * 11.811 diem = 318 MB rieng anh da ve, va do la anh CHUA nen. Nen duong CMYK kem kenh
+ * muc trang ve theo TUNG DAI - xem {@link #encodeWithWhiteBanded}. Ngoai ra con mot tran
+ * do theo heap that: vuot qua thi bao loi ro rang chu khong de he dieu hanh giet tien
+ * trinh, mat sach viec cua nguoi khac dang lam do.
  */
 @Component
 public class TiffComposer {
@@ -134,40 +138,42 @@ public class TiffComposer {
         boolean white = wantsWhiteChannel();
 
         try (PDDocument document = Loader.loadPDF(pdf)) {
-            // Chi ve kem kenh alpha khi that su can. Khong co kenh muc trang thi ban in
-            // khong co khai niem trong suot, va bo mot kenh la bot mot phan tu dung luong
-            // trong bo nho.
-            long renderStart = System.currentTimeMillis();
-            BufferedImage image = new PDFRenderer(document)
-                    .renderImageWithDPI(0, dpi, white ? ImageType.ARGB : ImageType.RGB);
-            long renderMs = System.currentTimeMillis() - renderStart;
-            int width = image.getWidth();
-            int height = image.getHeight();
-
-            long encodeStart = System.currentTimeMillis();
             byte[] tiff;
-            if (!properties.tiff().cmyk()) {
-                tiff = encode(image, dpi, srgbProfile(), null, null);
-            } else if (white) {
-                tiff = encodeWithWhite(image, dpi, cmykProfile());
-            } else {
-                ICC_Profile cmyk = cmykProfile();
-                BufferedImage converted = toCmyk(image, cmyk);
-                // Tra lai anh RGB NGAY: o 300 DPI no chiem 318 MB, giu them mot nhip la
-                // dinh bo nho gap doi trong luc nen file.
-                image.flush();
-                tiff = encode(converted, dpi, cmyk, null, null);
-                converted.flush();
-            }
-            long encodeMs = System.currentTimeMillis() - encodeStart;
-            image.flush();
+            int width;
+            int height;
 
-            log.info("Da dung TIFF tam {}: {} x {} diem o {} DPI{}, {} MB, mat {} ms"
-                            + " (ve {} ms, nen {} ms)",
+            if (white) {
+                // Duong DAI: khong bao gio ve ca tam ra bo nho - xem encodeWithWhiteBanded.
+                Banded banded = encodeWithWhiteBanded(document, dpi, cmykProfile());
+                tiff = banded.tiff();
+                width = banded.width();
+                height = banded.height();
+            } else {
+                // Khong co kenh muc trang thi ban in khong co khai niem trong suot, nen ve
+                // RGB - bot mot phan tu dung luong trong bo nho.
+                BufferedImage image = new PDFRenderer(document)
+                        .renderImageWithDPI(0, dpi, ImageType.RGB);
+                width = image.getWidth();
+                height = image.getHeight();
+
+                if (!properties.tiff().cmyk()) {
+                    tiff = encode(image, dpi, srgbProfile(), null, null);
+                } else {
+                    ICC_Profile cmyk = cmykProfile();
+                    BufferedImage converted = toCmyk(image, cmyk);
+                    // Tra lai anh RGB NGAY: o 300 DPI no chiem 318 MB, giu them mot nhip
+                    // la dinh bo nho gap doi trong luc nen file.
+                    image.flush();
+                    tiff = encode(converted, dpi, cmyk, null, null);
+                    converted.flush();
+                }
+                image.flush();
+            }
+
+            log.info("Da dung TIFF tam {}: {} x {} diem o {} DPI{}, {} MB, mat {} ms",
                     sheet.index() + 1, width, height, dpi,
                     white ? " kem kenh " + properties.tiff().white().channelName() : "",
-                    tiff.length / (1024 * 1024), System.currentTimeMillis() - start,
-                    renderMs, encodeMs);
+                    tiff.length / (1024 * 1024), System.currentTimeMillis() - start);
             return tiff;
         } catch (OutOfMemoryError err) {
             // Bat rieng: neu de no bay len tren, Spring tra 500 khong ro rang va may chu
@@ -203,20 +209,28 @@ public class TiffComposer {
                     dpi, megapixels, limit));
         }
 
-        // Dinh bo nho tinh theo so byte moi diem anh. Dem tung mang con song cung luc,
-        // doc thang tu encodeWithWhite():
+        // Dinh bo nho tinh theo so byte moi diem anh. Dem tung mang con song cung luc:
         //
         //   RGB           4        anh da ve
         //   CMYK          4 + 4    anh da ve va anh CMYK cung ton tai luc chuyen doi
-        //   CMYK + trang  1 + 1 + 4 + 5 = 11
-        //                          vung phu 1, mat na da co 1, anh CMYK 4, mang nam kenh 5
-        //                          - bon cai nay cung song o buoc interleave()
+        //   CMYK + trang  3        vung phu 1 + mat na da co 1, cong 1 cho phan da nen
+        //                          giu lai va cho file dau ra
+        //
+        // Duong CMYK + trang ve theo DAI nen ba mang co ca tam do la tat ca - anh da ve,
+        // anh CMYK va mang nam kenh deu chi ton mot dai. Truoc khi ve theo dai, con so
+        // nay la 11 byte moi diem: tam 57 x 100 cm o 300 DPI can 875 MB va may chu 2 GB
+        // bi he dieu hanh giet.
         //
         // Day la mang CON SONG. Mang da flush nhung GC chua kip don con nam them mot
         // nhip nua, va bo nho NGOAI heap cua ImageIO/ICC/PDFBox thi khong tinh o day -
         // nen he so nay la can duoi, khong phai con so an toan.
-        long perPixel = properties.tiff().cmyk() ? (wantsWhiteChannel() ? 11 : 8) : 4;
+        boolean banded = properties.tiff().cmyk() && wantsWhiteChannel();
+        long perPixel = properties.tiff().cmyk() ? (banded ? 3 : 8) : 4;
         long needBytes = widthPx * heightPx * perPixel;
+        if (banded) {
+            // Cong phan cua MOT dai: anh da ve 4 + anh CMYK 4 + mang nam kenh 5.
+            needBytes += (long) bandRows((int) heightPx) * widthPx * 13;
+        }
         long allowedBytes = properties.tiff().maxBytesPerSheet();
 
         if (needBytes > allowedBytes) {
@@ -273,48 +287,164 @@ public class TiffComposer {
      * chep that. Ai dinh toi uu lai cho nay xin doc {@code TiffWhiteChannelIntegrationTest}
      * truoc.
      */
-    private byte[] encodeWithWhite(BufferedImage rendered, int dpi, ICC_Profile profile)
+    /**
+     * Dung ban CMYK kem kenh muc trang, ve theo TUNG DAI.
+     *
+     * <p>Ban cu giu bon mang co ca tam cung mot luc - anh da ve, anh CMYK, mang nam kenh
+     * va hai mat na - tong 11 byte moi diem anh. Voi tam 57 x 100 cm o 300 DPI la 875 MB,
+     * qua suc may chu 2 GB: tien trinh bi he dieu hanh giet, khong phai JVM nem
+     * {@code OutOfMemoryError} nen khong cho nao bat duoc.
+     *
+     * <p>Ban nay chi giu hai mat na co ca tam (2 byte moi diem), con lai deu theo dai:
+     *
+     * <ol>
+     *   <li><b>Luot 1</b> ve tung dai, phan loai diem anh vao mat na. Phep loang tu mep
+     *       nhin ca tam nen phai doi het cac dai roi moi chay - xem
+     *       {@link WhiteChannel#finish}.</li>
+     *   <li><b>Luot 2</b> ve lai tung dai, chuyen CMYK, ghep nam kenh, nap vao lop
+     *       Photoshop, roi NEN dai do va giu lai. Ban in phan lon la giay trang nen phan
+     *       da nen rat gon.</li>
+     *   <li><b>Ghi</b> dua cho bo ghi TIFF mot anh luoi: no hoi tung dai, ta giai nen dung
+     *       dai do ra - xem {@link BandedSamples}.</li>
+     * </ol>
+     *
+     * <p>Ve hai luot nghe phi nhung ve chi chiem mot phan nho thoi gian; phan ton nhat la
+     * NEN file. Doi lai bo nho khong con phu thuoc chieu dai tam.
+     */
+    private Banded encodeWithWhiteBanded(PDDocument document, int dpi, ICC_Profile profile)
             throws IOException {
         AppProperties.Tiff.White settings = properties.tiff().white();
+        SheetBands bands = SheetBands.of(document, dpi);
+        int width = bands.width();
+        int height = bands.height();
+        int bandRows = bandRows(height);
 
         long start = System.currentTimeMillis();
+        byte[] coverage = new byte[width * height];
+        for (int row = 0; row < height; row += bandRows) {
+            int rows = Math.min(bandRows, height - row);
+            WhiteChannel.classify(bands.render(row, rows), coverage, width, row,
+                    settings.alphaThreshold(), settings.whiteTolerance());
+        }
+
+        // Loang nen tu mep tam. PHAI lam sau khi MOI dai da phan loai xong: duong loang
+        // di xuyen qua ranh gioi cac dai, lam som mot dai nao do la cat cut no.
+        WhiteChannel.finish(coverage, width, height);
+
         // Vung phu dung hai viec, va hai viec do can hai ban KHAC nhau: kenh do trong suot
         // lay ban chua co (lop mau trai het ra mep), kenh muc trang lay ban da co vao.
-        byte[] coverage = WhiteChannel.coverage(rendered,
-                settings.alphaThreshold(), settings.whiteTolerance());
-        byte[] mask = WhiteChannel.choke(coverage, rendered.getWidth(), rendered.getHeight(),
-                settings.chokePixels());
+        byte[] mask = WhiteChannel.choke(coverage, width, height, settings.chokePixels());
         log.info("Da dung mat na kenh {} trong {} ms (co vao {} diem)",
                 settings.channelName(), System.currentTimeMillis() - start, settings.chokePixels());
 
-        // Phai lam phang SAU khi dung mat na (buoc tren can kenh alpha) va TRUOC khi
-        // chuyen mau.
-        flattenOntoWhite(rendered);
+        PhotoshopLayers.Builder layerBuilder = properties.tiff().transparentLayer()
+                ? new PhotoshopLayers.Builder(width, height, properties.tiff().layerZip())
+                : null;
+        List<byte[]> packed = new ArrayList<>((height + bandRows - 1) / bandRows);
+        byte[] samples = new byte[bandRows * width * CMYK_WHITE_BANDS];
 
-        BufferedImage cmyk = toCmyk(rendered, profile);
-        // Tra lai anh da ve NGAY: o 300 DPI no chiem 318 MB, ma ngay sau day con phai cap
-        // phat them mot vung nam kenh nua.
-        rendered.flush();
+        long bandStart = System.currentTimeMillis();
+        for (int row = 0; row < height; row += bandRows) {
+            int rows = Math.min(bandRows, height - row);
+            BufferedImage band = bands.render(row, rows);
 
-        byte[] samples = interleave(cmyk, mask);
-        int width = cmyk.getWidth();
-        int height = cmyk.getHeight();
-        cmyk.flush();
+            // Phai lam phang SAU khi dung mat na (buoc tren can kenh alpha) va TRUOC khi
+            // chuyen mau.
+            flattenOntoWhite(band);
+            BufferedImage cmyk = toCmykQuiet(band, profile);
+            interleaveBand(cmyk, mask, row * width, rows * width, samples);
+            cmyk.flush();
 
-        byte[] layers = null;
-        if (properties.tiff().transparentLayer()) {
-            long layerStart = System.currentTimeMillis();
-            layers = PhotoshopLayers.transparentLayer(
-                    samples, CMYK_WHITE_BANDS, coverage, width, height, LAYER_NAME,
-                    properties.tiff().layerZip());
-            log.info("Da dung lop trong suot: {} MB, mat {} ms",
-                    layers.length / (1024 * 1024), System.currentTimeMillis() - layerStart);
+            if (layerBuilder != null) {
+                for (int y = 0; y < rows; y++) {
+                    layerBuilder.addRow(samples, y * width * CMYK_WHITE_BANDS,
+                            CMYK_WHITE_BANDS, coverage, (row + y) * width);
+                }
+            }
+            packed.add(deflate(samples, rows * width * CMYK_WHITE_BANDS));
         }
 
-        byte[] tiff = encode(spotImage(profile, samples, width, height), dpi, profile,
+        int packedBytes = packed.stream().mapToInt(part -> part.length).sum();
+        log.info("Da dung {} dai {} hang trong {} ms, giu lai {} MB da nen",
+                packed.size(), bandRows, System.currentTimeMillis() - bandStart,
+                packedBytes / (1024 * 1024));
+
+        byte[] layers = layerBuilder == null ? null : layerBuilder.finish(LAYER_NAME);
+        if (layers != null) {
+            log.info("Da dung lop trong suot: {} MB", layers.length / (1024 * 1024));
+        }
+
+        BandedSamples image = new BandedSamples(width, height, bandRows, ROWS_PER_STRIP,
+                CMYK_WHITE_BANDS,
+                packed, spotColorModel(profile));
+        byte[] tiff = encode(image, dpi, profile,
                 PhotoshopResources.spotChannel(settings.channelName()), layers);
         forceExtraSamplesUnspecified(tiff);
-        return tiff;
+        return new Banded(tiff, width, height);
+    }
+
+    /** Ket qua duong dai: file, va kich thuoc THAT ma PDFBox ve ra. */
+    private record Banded(byte[] tiff, int width, int height) {
+    }
+
+    /**
+     * So hang moi dai, lam tron LEN thanh boi so cua {@code ROWS_PER_STRIP}.
+     *
+     * <p>Phai la boi so thi moi dai TIFF ma bo ghi hoi moi nam gon trong mot dai cua ta -
+     * khong thi lan nao cung phai ghep tu hai dai, cham han.
+     */
+    private int bandRows(int height) {
+        int rows = Math.max(properties.tiff().bandRows(), ROWS_PER_STRIP);
+        rows = (rows + ROWS_PER_STRIP - 1) / ROWS_PER_STRIP * ROWS_PER_STRIP;
+        return Math.min(rows, height);
+    }
+
+    /** Nen mot dai bang Deflate de giu lai cho luc ghi file. */
+    private static byte[] deflate(byte[] source, int length) {
+        Deflater deflater = new Deflater(Deflater.BEST_SPEED);
+        try {
+            deflater.setInput(source, 0, length);
+            deflater.finish();
+            ByteArrayOutputStream out = new ByteArrayOutputStream(length / 8);
+            byte[] chunk = new byte[1 << 16];
+            while (!deflater.finished()) {
+                out.write(chunk, 0, deflater.deflate(chunk));
+            }
+            return out.toByteArray();
+        } finally {
+            deflater.end();
+        }
+    }
+
+    /** Ghep bon kenh mau va phan mat na cua MOT DAI vao mang nam kenh dung chung. */
+    private static void interleaveBand(BufferedImage cmyk, byte[] mask, int maskFrom,
+                                       int pixels, byte[] samples) {
+        byte[] colour = ((DataBufferByte) cmyk.getRaster().getDataBuffer()).getData();
+        for (int i = 0; i < pixels; i++) {
+            System.arraycopy(colour, i * CMYK_BANDS, samples, i * CMYK_WHITE_BANDS, CMYK_BANDS);
+        }
+        WhiteChannel.writeSpotBand(mask, maskFrom, pixels, samples, SPOT_BAND, CMYK_WHITE_BANDS);
+    }
+
+    /** Nhu {@link #toCmyk} nhung khong ghi log: duong dai goi no hang chuc lan. */
+    private BufferedImage toCmykQuiet(BufferedImage source, ICC_Profile profile) {
+        ICC_ColorSpace space = new ICC_ColorSpace(profile);
+        ComponentColorModel model = new ComponentColorModel(
+                space, false, false, Transparency.OPAQUE, DataBuffer.TYPE_BYTE);
+        WritableRaster raster = model.createCompatibleWritableRaster(
+                source.getWidth(), source.getHeight());
+        BufferedImage target = new BufferedImage(model, raster, false, null);
+        new ColorConvertOp(null).filter(source, target);
+        return target;
+    }
+
+    /** Mo hinh mau cua anh nam kenh - tach rieng de {@link BandedSamples} dung chung. */
+    private static ComponentColorModel spotColorModel(ICC_Profile profile) {
+        // Phai khai bao kenh thu nam la alpha thi Java moi chiu ghi anh nam kenh. Tag 338
+        // duoc sua lai ngay sau khi ghi - xem forceExtraSamplesUnspecified.
+        return new ComponentColorModel(
+                new ICC_ColorSpace(profile), true, false,
+                Transparency.TRANSLUCENT, DataBuffer.TYPE_BYTE);
     }
 
     /**
@@ -362,38 +492,6 @@ public class TiffComposer {
         }
     }
 
-    /**
-     * Ghep bon kenh mau va mat na muc trang thanh mot mang nam kenh xen ke.
-     *
-     * <p>Chep tung diem bon byte mot. Khong dung API anh o day: 79 trieu lan goi qua mo
-     * hinh mau thi lau gap boi, ma bo cuc nguon va dich deu da biet ro.
-     */
-    private static byte[] interleave(BufferedImage cmyk, byte[] mask) {
-        byte[] colour = ((DataBufferByte) cmyk.getRaster().getDataBuffer()).getData();
-        byte[] samples = new byte[mask.length * CMYK_WHITE_BANDS];
-
-        for (int i = 0; i < mask.length; i++) {
-            System.arraycopy(colour, i * CMYK_BANDS, samples, i * CMYK_WHITE_BANDS, CMYK_BANDS);
-        }
-        WhiteChannel.writeSpotBand(mask, samples, SPOT_BAND, CMYK_WHITE_BANDS);
-        return samples;
-    }
-
-    /** Anh nam kenh de dua cho bo ghi TIFF. */
-    private static BufferedImage spotImage(ICC_Profile profile, byte[] samples,
-                                           int width, int height) {
-        // Phai khai bao kenh thu nam la alpha thi Java moi chiu ghi anh nam kenh. Tag 338
-        // duoc sua lai ngay sau khi ghi - xem forceExtraSamplesUnspecified.
-        ComponentColorModel model = new ComponentColorModel(
-                new ICC_ColorSpace(profile), true, false,
-                Transparency.TRANSLUCENT, DataBuffer.TYPE_BYTE);
-        WritableRaster raster = Raster.createWritableRaster(
-                new PixelInterleavedSampleModel(DataBuffer.TYPE_BYTE, width, height,
-                        CMYK_WHITE_BANDS, width * CMYK_WHITE_BANDS,
-                        new int[]{0, 1, 2, 3, SPOT_BAND}),
-                new DataBufferByte(samples, samples.length), null);
-        return new BufferedImage(model, raster, false, null);
-    }
 
     /**
      * Sua tag 338 trong file da ghi ve 0.
@@ -437,7 +535,7 @@ public class TiffComposer {
      * <p>Day la chang ton thoi gian nhat cua ca quy trinh: do tren mot tam 57 x 100 cm o
      * 300 DPI thi ve het 210 ms, chuyen mau 1 giay, con nen het 3,9 giay - tuc 76%.
      */
-    private byte[] encode(BufferedImage image, int dpi, ICC_Profile profile,
+    private byte[] encode(java.awt.image.RenderedImage image, int dpi, ICC_Profile profile,
                           byte[] photoshop, byte[] layers) throws IOException {
         ImageWriter writer = ImageIO.getImageWritersByFormatName("tiff").next();
         ByteArrayOutputStream output = new ByteArrayOutputStream();

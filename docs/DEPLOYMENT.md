@@ -85,7 +85,7 @@ Xong bước này bạn đã có bản demo chạy được đầy đủ giao di
    | Language | **Docker** |
    | Root Directory | `backend` |
    | Dockerfile Path | `backend/Dockerfile` |
-   | Instance Type | 2 GB trở lên; muốn 300 DPI trên tấm dài 1 m thì cần **4 GB** — xem mục 2.3. **Không** dùng Free (mục 2.4) |
+   | Instance Type | 2 GB trở lên (đủ cho 300 DPI trên tấm dài tới ~2 m — xem mục 2.3). **Không** dùng Free (mục 2.4) |
 
 4. Thêm biến môi trường:
 
@@ -119,19 +119,27 @@ Nhận được JSON này nghĩa là ứng dụng đã chạy và tầng xử l�
 
 ### 2.3. Chọn RAM theo khổ tấm và DPI
 
-Dựng một bản TIF giữ **11 byte cho mỗi điểm ảnh** cùng lúc (ảnh đã vẽ, ảnh CMYK, mảng năm kênh, hai mặt nạ). Bộ nhớ tăng theo **bình phương** DPI:
+Bản TIF được dựng **theo từng dải ngang**, không bao giờ vẽ cả tấm ra bộ nhớ. Chỉ hai mặt nạ là có kích thước cả tấm (1 byte mỗi điểm mỗi cái), cộng phần đã nén giữ lại, cộng **một** dải đang xử lý:
 
-| Tấm | 150 DPI | 240 DPI | 300 DPI |
-|---|---|---|---|
-| 57 × 50 cm | 55 MB | 140 MB | 219 MB |
-| 57 × 100 cm | 110 MB | 280 MB | **875 MB** |
+```
+bộ nhớ ≈ 3 byte × số điểm ảnh  +  band-rows × chiều rộng × 13 byte
+```
+
+| Tấm (300 DPI) | Trước (giữ cả tấm) | Nay (theo dải) |
+|---|---|---|
+| 57 × 50 cm | 437 MB | **209 MB** |
+| 57 × 100 cm | **875 MB** | **328 MB** |
 
 `app.tiff.max-heap-fraction` (mặc định 0,5) chỉ cho một tấm dùng nửa heap, phần còn lại để ghi file và phục vụ các yêu cầu khác. Với `MaxRAMPercentage=60`:
 
-| Instance | Heap | Một tấm được dùng | Tấm 57 × 100 cm |
+| Instance | Heap | Một tấm được dùng | Tấm 57 × 100 cm ở 300 DPI |
 |---|---|---|---|
-| 2 GB (`1c-2g`) | 1,2 GB | 600 MB | **Chỉ tới ~240 DPI** |
-| 4 GB | 2,4 GB | 1,2 GB | 300 DPI thoải mái |
+| 2 GB (`1c-2g`) | 1,2 GB | 600 MB | **Chạy được**, còn dư tới ~2,1 m |
+| 4 GB | 2,4 GB | 1,2 GB | Thoải mái |
+
+> Đã chạy thật với heap đúng 1,2 GB: tấm 570 × 819 mm (6.732 × 9.673 điểm) ở 300 DPI xuất xong trong 9 giây, và file ra **giống bản cũ từng byte** — cả 325.593.180 byte điểm ảnh, cả năm kênh.
+
+> **Bản cắt cũng vẽ theo dải** và chỉ cần mặt nạ 1 byte mỗi điểm, nên nó nhẹ hơn nhiều: khoảng 1 byte × số điểm ảnh cộng một dải. Luồng nội dung file cắt xuất ra cũng trùng bản cũ từng byte.
 
 Vượt mức thì trả `TIFF_TOO_LARGE` **kèm đúng con số DPI nên đặt** — không phải đoán. Bản PDF và bản cắt không vướng giới hạn này.
 

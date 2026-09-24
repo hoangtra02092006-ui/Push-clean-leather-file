@@ -133,14 +133,82 @@ final class PhotoshopLayers {
     static byte[] transparentLayer(byte[] samples, int stride, byte[] alpha,
                                    int width, int height, String name, boolean useZip)
             throws IOException {
-        // Nen tung kenh mot. Kenh do trong suot di truoc, roi den C, M, Y, K - dung thu tu
-        // file mau khai trong ban ghi.
-        byte[][] channels = new byte[1 + CMYK_CHANNELS][];
-        channels[0] = packChannel(alpha, 0, 1, width, height, false, useZip);
-        for (int c = 0; c < CMYK_CHANNELS; c++) {
-            channels[c + 1] = packChannel(samples, c, stride, width, height, true, useZip);
+        Builder builder = new Builder(width, height, useZip);
+        for (int y = 0; y < height; y++) {
+            builder.addRow(samples, y * width * stride, stride, alpha, y * width);
+        }
+        return builder.finish(name);
+    }
+
+    /**
+     * Dung khoi 37724 theo TUNG HANG, khong can ca tam nam san trong bo nho.
+     *
+     * <p>Ban {@link #transparentLayer} o tren nen tung kenh mot, tuc la quet ca tam nam
+     * lan. Dung file theo dai thi khong con ca tam de ma quet: du lieu di qua mot lan roi
+     * thoi. Nen o day nam bo nen chay SONG SONG, moi hang nap mot nhat vao ca nam.
+     *
+     * <p>Ket qua ra byte y het ban kia - moi kenh van la mot luong nen lien tuc, chi khac
+     * thu tu goi ham.
+     */
+    static final class Builder {
+
+        private final int width;
+        private final int height;
+        private final ChannelEncoder[] encoders = new ChannelEncoder[1 + CMYK_CHANNELS];
+        private final byte[] row;
+        private int rows;
+
+        Builder(int width, int height, boolean useZip) {
+            this.width = width;
+            this.height = height;
+            this.row = new byte[width];
+            for (int c = 0; c < encoders.length; c++) {
+                encoders[c] = useZip ? new ZipEncoder() : new RleEncoder(height);
+            }
         }
 
+        /**
+         * Nap mot hang.
+         *
+         * <p>Kenh do trong suot khong lat gia tri, bon kenh mau thi lat - xem
+         * {@link #transparentLayer}.
+         *
+         * @param samples     mang xen ke chua hang nay
+         * @param offset      hang nay bat dau o dau trong {@code samples}
+         * @param stride      so kenh moi diem anh
+         * @param alpha       mang do trong suot
+         * @param alphaOffset hang nay bat dau o dau trong {@code alpha}
+         */
+        void addRow(byte[] samples, int offset, int stride, byte[] alpha, int alphaOffset)
+                throws IOException {
+            System.arraycopy(alpha, alphaOffset, row, 0, width);
+            encoders[0].row(row);
+
+            for (int c = 0; c < CMYK_CHANNELS; c++) {
+                int at = offset + c;
+                for (int x = 0; x < width; x++, at += stride) {
+                    row[x] = (byte) (255 - (samples[at] & 0xFF));
+                }
+                encoders[c + 1].row(row);
+            }
+            rows++;
+        }
+
+        byte[] finish(String name) throws IOException {
+            if (rows != height) {
+                throw new IllegalStateException(
+                        "Lop can " + height + " hang nhung moi nap " + rows);
+            }
+            byte[][] channels = new byte[encoders.length][];
+            for (int c = 0; c < encoders.length; c++) {
+                channels[c] = encoders[c].done();
+            }
+            return assemble(channels, width, height, name);
+        }
+    }
+
+    private static byte[] assemble(byte[][] channels, int width, int height, String name)
+            throws IOException {
         ByteArrayOutputStream layer = new ByteArrayOutputStream();
         writeLayerRecord(layer, channels, width, height, name);
         for (byte[] channel : channels) {
@@ -222,21 +290,18 @@ final class PhotoshopLayers {
         return out.toByteArray();
     }
 
+
     /**
-     * Tach mot kenh ra khoi anh xen ke roi nen bang PackBits.
+     * Mot bo nen cho mot kenh, nap theo tung hang.
      *
-     * <p>Cach xep khac han anh gop: o day moi kenh la mot mang RIENG, va moi HANG duoc nen
-     * doc lap. Truoc du lieu la bang do dai tung hang, de doc mot hang bat ky khong phai
-     * giai nen tu dau.
-     *
-     * @param invert lat gia tri lai. Xem {@link #transparentLayer} ve chieu gia tri
+     * <p>Nam bo chay song song, moi hang nap mot nhat vao ca nam - nho vay du lieu chi
+     * phai di qua mot lan, khong can ca tam nam san trong bo nho de quet lai.
      */
-    private static byte[] packChannel(byte[] source, int band, int stride,
-                                      int width, int height, boolean invert,
-                                      boolean useZip) throws IOException {
-        return useZip
-                ? zipChannel(source, band, stride, width, height, invert)
-                : rleChannel(source, band, stride, width, height, invert);
+    private interface ChannelEncoder {
+
+        void row(byte[] row) throws IOException;
+
+        byte[] done() throws IOException;
     }
 
     /**
@@ -246,28 +311,37 @@ final class PhotoshopLayers {
      * 57 x 100 cm o 300 DPI, mang rieng do la 79 MB - nhan voi nam kenh la 395 MB cap phat
      * chi de vut di, ngay trong luc bo nho dang cang nhat.
      */
-    private static byte[] zipChannel(byte[] source, int band, int stride,
-                                     int width, int height, boolean invert) {
-        Deflater deflater = new Deflater(ZIP_LEVEL);
-        ByteArrayOutputStream out = new ByteArrayOutputStream(width * height / 4);
-        out.writeBytes(int16(COMPRESSION_ZIP));
+    private static final class ZipEncoder implements ChannelEncoder {
 
-        byte[] row = new byte[width];
-        byte[] chunk = new byte[1 << 16];
-        for (int y = 0; y < height; y++) {
-            readRow(source, band, stride, width, y, invert, row);
+        private final Deflater deflater = new Deflater(ZIP_LEVEL);
+        private final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        private final byte[] chunk = new byte[1 << 16];
+
+        ZipEncoder() {
+            // Hai byte khai kieu nen di truoc du lieu. Ghi ngay tu dau de khoi phai chep
+            // lai ca vung dem luc ket thuc - vung do co the vai chuc MB.
+            out.writeBytes(int16(COMPRESSION_ZIP));
+        }
+
+        @Override
+        public void row(byte[] row) {
             deflater.setInput(row);
+            // Phai vet het truoc khi tra ham: nguoi goi dung CHUNG mot mang hang cho ca
+            // nam kenh, nen con byte nao chua nen la hang sau ghi de len.
             while (!deflater.needsInput()) {
                 out.write(chunk, 0, deflater.deflate(chunk));
             }
         }
 
-        deflater.finish();
-        while (!deflater.finished()) {
-            out.write(chunk, 0, deflater.deflate(chunk));
+        @Override
+        public byte[] done() {
+            deflater.finish();
+            while (!deflater.finished()) {
+                out.write(chunk, 0, deflater.deflate(chunk));
+            }
+            deflater.end();
+            return out.toByteArray();
         }
-        deflater.end();
-        return out.toByteArray();
     }
 
     /**
@@ -276,34 +350,33 @@ final class PhotoshopLayers {
      * <p>Co bang do dai nen doc mot hang bat ky khong phai giai nen tu dau - cai loi ma
      * ZIP khong co, nhung doi lai file to hon han.
      */
-    private static byte[] rleChannel(byte[] source, int band, int stride,
-                                     int width, int height, boolean invert) throws IOException {
-        byte[] row = new byte[width];
-        ByteArrayOutputStream packed = new ByteArrayOutputStream();
-        short[] rowLengths = new short[height];
+    private static final class RleEncoder implements ChannelEncoder {
 
-        for (int y = 0; y < height; y++) {
-            readRow(source, band, stride, width, y, invert, row);
+        private final ByteArrayOutputStream packed = new ByteArrayOutputStream();
+        private final short[] rowLengths;
+        private int y;
+
+        RleEncoder(int height) {
+            this.rowLengths = new short[height];
+        }
+
+        @Override
+        public void row(byte[] row) throws IOException {
             int before = packed.size();
             packBits(row, packed);
-            rowLengths[y] = (short) (packed.size() - before);
+            rowLengths[y++] = (short) (packed.size() - before);
         }
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream(packed.size() + height * 2 + 2);
-        out.writeBytes(int16(COMPRESSION_RLE));
-        for (short length : rowLengths) {
-            out.writeBytes(int16(length));
-        }
-        packed.writeTo(out);
-        return out.toByteArray();
-    }
-
-    /** Rut mot hang cua mot kenh ra khoi mang xen ke, lat gia tri neu can. */
-    private static void readRow(byte[] source, int band, int stride,
-                                int width, int y, boolean invert, byte[] row) {
-        int at = y * width * stride + band;
-        for (int x = 0; x < width; x++, at += stride) {
-            row[x] = invert ? (byte) (255 - (source[at] & 0xFF)) : source[at];
+        @Override
+        public byte[] done() throws IOException {
+            ByteArrayOutputStream out =
+                    new ByteArrayOutputStream(packed.size() + rowLengths.length * 2 + 2);
+            out.writeBytes(int16(COMPRESSION_RLE));
+            for (short length : rowLengths) {
+                out.writeBytes(int16(length));
+            }
+            packed.writeTo(out);
+            return out.toByteArray();
         }
     }
 

@@ -57,8 +57,53 @@ public final class WhiteChannel {
     public static byte[] coverage(BufferedImage image, int threshold, int whiteTolerance) {
         int width = image.getWidth();
         int height = image.getHeight();
-        boolean hasAlpha = image.getColorModel().hasAlpha();
         byte[] mask = new byte[width * height];
+        classify(image, mask, width, 0, threshold, whiteTolerance);
+        finish(mask, width, height);
+        return mask;
+    }
+
+    /**
+     * Phan loai mot DAI anh vao dung cho cua no trong mat na ca tam.
+     *
+     * <p>Tach rieng buoc nay de dung file TIF khong phai ve ca tam ra bo nho mot luc: mot
+     * tam 57 x 100 cm o 300 DPI la 318 MB rieng anh da ve. Ve tung dai roi phan loai vao
+     * day thi chi mat na 1 byte moi diem la phai giu ca tam - 79 MB thay vi 318 MB.
+     *
+     * <p>Phep phan loai thuan tuy theo TUNG DIEM nen cat dai o dau cung cho ket qua y het.
+     * Buoc loang moi la buoc nhin ca tam, va no nam rieng o {@link #finish}.
+     *
+     * @param band      dai anh da ve
+     * @param mask      mat na cua CA TAM
+     * @param width     chieu rong ca tam, bang chieu rong dai
+     * @param firstRow  dai nay bat dau o hang nao cua ca tam
+     */
+    public static void classify(BufferedImage band, byte[] mask, int width, int firstRow,
+                                int threshold, int whiteTolerance) {
+        classifyRows(band, mask, width, firstRow, threshold, whiteTolerance);
+    }
+
+    /**
+     * Loang nen tu mep tam roi chot cac diem gan trang con lai thanh co hinh.
+     *
+     * <p>Phai goi SAU khi moi dai da phan loai xong: phep loang di xuyen qua ranh gioi
+     * cac dai, nen lam som mot dai nao do la cat cut duong loang.
+     */
+    public static void finish(byte[] mask, int width, int height) {
+        floodBackground(mask, width, height);
+
+        // Cho nao gan trang ma khong noi ra mep thi la chi tiet trang that: lot binh thuong.
+        for (int i = 0; i < mask.length; i++) {
+            if (mask[i] == PALE) {
+                mask[i] = INK;
+            }
+        }
+    }
+
+    private static void classifyRows(BufferedImage image, byte[] mask, int width, int firstRow,
+                                     int threshold, int whiteTolerance) {
+        int height = image.getHeight();
+        boolean hasAlpha = image.getColorModel().hasAlpha();
         int floor = 255 - whiteTolerance;
 
         // Muon THANG mang diem anh khi co the. PDFBox ve ra anh INT_ARGB, ma getRGB cua
@@ -68,9 +113,9 @@ public final class WhiteChannel {
         int[] row = direct == null ? new int[width] : null;
 
         for (int y = 0; y < height; y++) {
-            int offset = y * width;
+            int offset = (firstRow + y) * width;
             int[] source = direct;
-            int from = offset;
+            int from = y * width;
             if (direct == null) {
                 image.getRGB(0, y, width, 1, row, 0, width);
                 source = row;
@@ -90,17 +135,6 @@ public final class WhiteChannel {
                 mask[offset + x] = pale ? PALE : INK;
             }
         }
-
-        floodBackground(mask, width, height);
-
-        // Cho nao gan trang ma khong noi ra mep thi la chi tiet trang that: lot binh thuong.
-        for (int i = 0; i < mask.length; i++) {
-            if (mask[i] == PALE) {
-                mask[i] = INK;
-            }
-        }
-
-        return mask;
     }
 
     /**
@@ -288,8 +322,19 @@ public final class WhiteChannel {
      * @param pixelStride so kenh moi diem anh
      */
     public static void writeSpotBand(byte[] mask, byte[] samples, int band, int pixelStride) {
-        for (int i = 0; i < mask.length; i++) {
-            samples[i * pixelStride + band] = (byte) (255 - (mask[i] & 0xFF));
+        writeSpotBand(mask, 0, mask.length, samples, band, pixelStride);
+    }
+
+    /**
+     * Nhu tren nhung chi mot doan cua mat na, de ghi theo tung dai.
+     *
+     * @param from   diem dau trong mat na
+     * @param pixels so diem can ghi
+     */
+    public static void writeSpotBand(byte[] mask, int from, int pixels,
+                                     byte[] samples, int band, int pixelStride) {
+        for (int i = 0; i < pixels; i++) {
+            samples[i * pixelStride + band] = (byte) (255 - (mask[from + i] & 0xFF));
         }
     }
 }

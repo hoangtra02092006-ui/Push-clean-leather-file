@@ -15,8 +15,6 @@ import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceCMYK;
 import org.apache.pdfbox.pdmodel.graphics.color.PDSeparation;
 import org.apache.pdfbox.pdmodel.graphics.optionalcontent.PDOptionalContentGroup;
 import org.apache.pdfbox.pdmodel.graphics.optionalcontent.PDOptionalContentProperties;
-import org.apache.pdfbox.rendering.ImageType;
-import org.apache.pdfbox.rendering.PDFRenderer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -68,6 +66,14 @@ public class CutComposer {
      */
     private static final float[] SPOT_PREVIEW_CMYK = {0f, 0f, 0f, 1f};
 
+    /**
+     * So hang anh moi lan ve.
+     *
+     * <p>Ban cat chi can mat na 1 byte moi diem nen khong co tuy chon rieng: 1.024 hang o
+     * kho 57 cm la 27 MB, du nho tren moi may chu.
+     */
+    private static final int BAND_ROWS = 1024;
+
     /** Ten hai lop trong file PDF. */
     private static final String REG_MARK_LAYER = "RegMarks";
 
@@ -94,10 +100,14 @@ public class CutComposer {
         byte[] pdf = pdfComposer.compose(sheet, false);
 
         try (PDDocument source = Loader.loadPDF(pdf)) {
-            BufferedImage image = new PDFRenderer(source)
-                    .renderImageWithDPI(0, settings.dpi(), ImageType.ARGB);
-            int width = image.getWidth();
-            int height = image.getHeight();
+            // Ve theo TUNG DAI, khong bao gio ca tam mot luc: mot tam 57 x 100 cm o 300 DPI
+            // la 318 MB rieng anh da ve, du de he dieu hanh giet tien trinh tren may chu
+            // 2 GB. Ban cat chi can mat na 1 byte moi diem, nen ve xong dai nao la tra lai
+            // bo nho dai do ngay.
+            SheetBands bands = SheetBands.of(source, settings.dpi());
+            int width = bands.width();
+            int height = bands.height();
+            int bandRows = Math.min(BAND_ROWS, height);
 
             // DUNG vung phu cua kenh muc trang W1, khong dung mot phep do rieng. Nho vay
             // duong cat chay dung tren vien cua lop W1 - dung cai tho nhin thay khi bat
@@ -108,9 +118,15 @@ public class CutComposer {
             // moi ben 1 diem la dut thanh tung cham roi rac. Do that tren mot ban in cua
             // xuong, dong chu nho "NGUYEN BAN TRA VIET" vo thanh 59 cham co 0,007 mm2 -
             // dung bang mot diem anh - roi bi buoc loc bui don sach.
-            byte[] cutMask = WhiteChannel.coverage(image,
-                    white.alphaThreshold(), white.whiteTolerance());
-            image.flush();
+            byte[] cutMask = new byte[width * height];
+            for (int row = 0; row < height; row += bandRows) {
+                BufferedImage band = bands.render(row, Math.min(bandRows, height - row));
+                WhiteChannel.classify(band, cutMask, width, row,
+                        white.alphaThreshold(), white.whiteTolerance());
+                band.flush();
+            }
+            // Phep loang nhin ca tam nen phai doi moi dai phan loai xong - xem WhiteChannel.
+            WhiteChannel.finish(cutMask, width, height);
 
             int radius = (int) Math.round(settings.offsetMm() * settings.dpi() / 25.4);
             if (radius > 0) {

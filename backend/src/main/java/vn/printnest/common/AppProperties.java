@@ -161,6 +161,11 @@ public record AppProperties(Storage storage, Cors cors, Trim trim, Retention ret
      * @param dpi            do phan giai. 300 la muc chuan cho in an
      * @param maxMegapixels  tran cung: tam lon hon muc nay thi bao loi ro rang thay vi de
      *                       may chu het bo nho roi tu khoi dong lai
+     * @param bandRows       so hang anh moi lan ve, o che do CMYK kem kenh muc trang.
+     *                       Ve ca tam 57 x 100 cm ra bo nho la 318 MB rieng anh da ve;
+     *                       ve theo dai thi bo nho khong con phu thuoc CHIEU DAI tam nua.
+     *                       So nho thi nhe bo nho nhung phai doc lai luong noi dung PDF
+     *                       nhieu lan hon. Duoc lam tron len thanh boi so cua 64
      * @param maxHeapFraction phan bo nho JVM duoc phep dung cho MOT tam, 0..1.
      *                       {@code maxMegapixels} la tran co dinh nen no khong biet may
      *                       chu that co bao nhieu RAM: 100 trieu diem o che do CMYK kem
@@ -189,9 +194,10 @@ public record AppProperties(Storage storage, Cors cors, Trim trim, Retention ret
      *                       RLE 4.738.303 byte mat 1.330 ms, ZIP 2.542.473 byte mat 735 ms
      * @param white          cau hinh kenh muc trang (spot channel) cho in DTF
      */
-    public record Tiff(int dpi, int maxMegapixels, double maxHeapFraction, String compression,
-                       double compressionQuality, String colorMode, String cmykProfile,
-                       boolean transparentLayer, boolean layerZip, White white) {
+    public record Tiff(int dpi, int maxMegapixels, double maxHeapFraction, int bandRows,
+                       String compression, double compressionQuality, String colorMode,
+                       String cmykProfile, boolean transparentLayer, boolean layerZip,
+                       White white) {
 
         /** So byte mot tam duoc phep chiem, suy tu heap that cua may chu dang chay. */
         public long maxBytesPerSheet() {
