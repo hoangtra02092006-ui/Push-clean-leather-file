@@ -31,7 +31,7 @@ public class ExportCache {
     private static final Logger log = LoggerFactory.getLogger(ExportCache.class);
 
     /**
-     * Tran dung luong, tinh bang byte: 200 MB, nhung khong qua 1/4 heap.
+     * Tran dung luong, tinh bang byte: 200 MB, nhung khong qua 1/8 heap.
      *
      * <p>200 MB chua duoc khoang 50 tam o muc 4 MB moi tam - du cho vai don lam cung luc.
      *
@@ -41,7 +41,7 @@ public class ExportCache {
      * giu trong bo nho mat sach. Nen tran phai co lien he voi heap that.
      */
     private static final long MAX_BYTES = Math.min(
-            200L * 1024 * 1024, Runtime.getRuntime().maxMemory() / 4);
+            200L * 1024 * 1024, Runtime.getRuntime().maxMemory() / 8);
 
     /** Bang theo thu tu DUNG GAN NHAT, nen phan tu dau bang la thu lau khong ai dung. */
     private final Map<String, byte[]> entries = new LinkedHashMap<>(16, 0.75f, true);
@@ -57,6 +57,27 @@ public class ExportCache {
      * @param build  cach dung file neu chua co
      */
     public byte[] get(String jobId, int index, String format, Supplier<byte[]> build) {
+        return get(jobId, index, format, build, true);
+    }
+
+    /**
+     * Nhu tren, nhung co the KHONG giu lai ban vua dung.
+     *
+     * <p>Luc tai ca bo .zip thi giu lai la phan tac dung: cac tam duoc dung lien tiep roi
+     * ghi thang ra dap ung, gan nhu khong ai tai le tung tam ngay sau do. Ma giu lai thi
+     * bo nho dem phinh dan trong khi tam dang dung can toi vai tram MB.
+     *
+     * <p>Da gap that tren may 1,2 GB heap: bo 11 tam 57 x 99 cm dung den tam thu CHIN thi
+     * het bo nho, vi tam mot den tam tam dang nam trong bo nho dem. Goi zip tra ve chin
+     * file, rieng file thu chin rong 0 KB - va no VAN tai ve duoc.
+     *
+     * <p>Van DOC tu bo nho dem: tho hay xem thu vai tam roi moi tai ca bo, nhung tam da
+     * xem do khong phai dung lai.
+     *
+     * @param store co giu lai ban vua dung khong
+     */
+    public byte[] get(String jobId, int index, String format, Supplier<byte[]> build,
+                      boolean store) {
         String key = jobId + '/' + index + '.' + format;
 
         synchronized (this) {
@@ -79,7 +100,7 @@ public class ExportCache {
             if (raced != null) {
                 return raced;
             }
-            if (built.length <= MAX_BYTES) {
+            if (store && built.length <= MAX_BYTES) {
                 entries.put(key, built);
                 usedBytes += built.length;
                 evictUntilWithinLimit();
